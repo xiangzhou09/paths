@@ -16,6 +16,7 @@ peace <- CCES10_public %>%
                 ally, trade, h1, i1, p1, e1, r1, male, white, age, ed4) %>%
   mutate(ipw = 1)
 
+
 dat <- peace
 
 x <- c("ally", "trade", "h1", "i1", "p1", "e1", "r1", "male", "white", "age", "ed4")
