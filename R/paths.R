@@ -78,7 +78,10 @@ paths_fun <- function(model_objects = NULL,
                   "recurbart", "survbart",
                   "wbart")
 
-  ### Clean up input data
+  ### TO-DO: Clean up input data
+  ### Decide on best way to use input data, x.train, y.train etc.
+  ### and keep only observations that common to the full model
+
 
   ## Check to see which input method is used
   if(is.null(model_objects) & is.null(formulas)) {
@@ -107,7 +110,6 @@ paths_fun <- function(model_objects = NULL,
 
     if(is.null(models)){
       warning("Argument 'models' is not supplied along side 'formulas', using 'lm' as default")
-
       models <- rep("lm", length(formulas))
 
     } else {
