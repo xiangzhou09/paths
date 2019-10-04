@@ -38,37 +38,122 @@ model_y <- lm(formula_y, data = dat)
 model_m2 <- lm(formula_m2, data = dat)
 model_m1 <- lm(formula_m1, data = dat)
 
-models <- list(model_y, model_m2)
+model_objects <- list(model_y, model_m2)
 
 model_y_bart <- pbart(x.train = x_mat_y, y.train = y_mat)
 model_m2_bart <- pbart(x.train = x_mat_m2, y.train = y_mat)
 
-models <- list(model_y_bart, model_m2_bart)
+model_objects <- list(model_y_bart, model_m2_bart)
 x.train <- x_mat_y
 y.train <- y_mat
+
+formulas <- list(formula_y, formula_m2)
+models <- c("lm", "lm")
 
 #######
 
 # First function
-paths_fun <- function(models = list(),
-                  sims = 1000, boot = FALSE,
-                  treat = "treat.name",
-                  #mediator = list(c("m1_name_1", ...), ...),
-                  covariates = NULL,
-                  outcome = NULL,
-                  w = NULL,
-                  x.train = NULL,
-                  y.train = NULL) {
+paths_fun <- function(model_objects = NULL,
+                      formulas = NULL,
+                      models = NULL,
+                      models_args = NULL,
+                      mediators = NULL,
+                      #sims = 1000, boot = FALSE,
+                      treat = "treat.name",
+                      covariates = NULL,
+                      outcome = NULL,
+                      w = NULL,
+                      data = NULL,
+                      x.train = NULL,
+                      y.train = NULL) {
 
-  model_y <- models[[1]]
+  ### parse out function call ###
 
-  # Model type indicators
-  isLm <- sapply(models, inherits, "lm")
-  isGlm <- sapply(models, inherits, "glm")
-  isBart <- sapply(models, inherits, c("abart", "gbart", "lbart",
-                                       "pbart", "mbart", "mbart2",
-                                       "recurbart", "survbart",
-                                       "wbart"))
+  cl <- match.call()
+
+  lm_names <- "lm"
+  glm_names <- "glm"
+  bart_names <- c("abart", "gbart", "lbart",
+                  "pbart", "mbart", "mbart2",
+                  "recurbart", "survbart",
+                  "wbart")
+
+  ### Clean up input data
+
+  ## Check to see which input method is used
+  if(is.null(model_objects) & is.null(formulas)) {
+    stop("Either 'model_objects' or 'formulas' must be supplied")
+  } else if(!is.null(model_objects)) {
+
+    ## Option 1: User input a list of model objects
+
+    if(!inherits(model_objects, "list")) {
+      stop("'model_objects' must be a list of fitted model objects")
+    }
+    if(!any(sapply(model_objects, function(x) inherits(x, what = c(lm_names, glm_names, bart_names))))) {
+      stop("'model_objects' must be a list containing objects of type 'lm', 'glm' or '*bart'")
+    }
+
+    model_y <- model_objects[[1]]
+
+    # Model type indicators
+    isLm <- sapply(model_objects, inherits, lm_names)
+    isGlm <- sapply(model_objects, inherits, glm_names)
+    isBart <- sapply(model_objects, inherits, bart_names)
+
+  } else if(!is.null(formulas)) {
+
+    ## Option 2: User input a list of formula and corresponding methods and arguments
+
+    if(is.null(models)){
+      stop("argument 'models' must be supplied along side 'formulas'")
+    } else {
+
+      if(inherits(models, "list")) {
+        models <- unlist(models)
+      }
+
+      if(length(models) != length(formulas)) {
+        stop("'formulas' and 'models' must be of equal length")
+      }
+    }
+
+    isLm <- isGlm <- isBart <- rep(FALSE, length(formulas))
+
+    for(i in 1:length(formulas)) {
+      if(models[i] %in% lm_names) {
+        args <- c(list(formula = formulas[[i]],
+                       data = data),
+                  models_args[[i]])
+
+        model_objects[[i]] <- do.call(lm, args)
+        isLm[i] <- TRUE
+
+      } else if(models[i] %in% glm_names) {
+        args <- c(list(formula = formulas[[i]],
+                       data = data),
+                  models_args[[i]])
+
+        model_objects[[i]] <- do.call(glm, args)
+        isGlm[i] <- TRUE
+
+      } else if(models[i] %in% bart_names) {
+        x <- model.matrix(formulas[[i]], data)[,-1]
+        y <- data[[outcome]]
+
+        args <- c(list(x.train = x,
+                       y.train = y),
+                  models_args[[i]])
+
+        ## TO-DO: Decide which bart function to use here!
+
+        model_objects[[i]] <- do.call(pbart, args)
+
+        isBart[i] <- TRUE
+      }
+    }
+
+  }
 
   # extract vectors of observed outcomes, treatment and
   # a matrix of covariates
@@ -80,7 +165,7 @@ paths_fun <- function(models = list(),
   } else if(isBart[1]) {
     # Verify that the original data are present
     if(is.null(x.train) | is.null(y.train)) {
-      stop("For BART models, the original x.train and y.train are required")
+      stop("For BART model_objects, the original x.train and y.train are required")
     }
     # Check if the data are at least similar.
     if(nrow(x.train) != length(y.train)) {
@@ -118,14 +203,14 @@ paths_fun <- function(models = list(),
   mat_a1 <- mat[a,]
   mat_a0 <- mat[!a,]; mat_a0[,treat] <- 1
 
-  E_y_1_mk_0 <- sapply(length(models):1, function(k) {
+  E_y_1_mk_0 <- sapply(length(model_objects):1, function(k) {
     # outcome model conditioning on treatment, mediators M_k and X
     if(isLm[k] | isGlm[k]) {
-      y_1_mk_0 <- predict(models[[k]], newdata = data.frame(mat_a0))
+      y_1_mk_0 <- predict(model_objects[[k]], newdata = data.frame(mat_a0))
     }
     if(isBart[k]) {
-      var <- colnames(models[[k]]$varcount)
-      y_1_mk_0 <- predict(models[[k]], newdata = mat_a0[,var])[["prob.test.mean"]]
+      var <- colnames(model_objects[[k]]$varcount)
+      y_1_mk_0 <- predict(model_objects[[k]], newdata = mat_a0[,var])[["prob.test.mean"]]
     }
 
     weighted.mean(y_1_mk_0, w = ipw_a0)
@@ -133,7 +218,7 @@ paths_fun <- function(models = list(),
 
   # construct path-specific effects
 
-  K <- length(models)
+  K <- length(model_objects)
 
   eff_te <- E_a1 - E_a0                                 # Total effect
   eff_a_y <- E_y_1_mk_0[K] - E_a0                       # Direct effect
@@ -148,16 +233,30 @@ paths_fun <- function(models = list(),
   return(out)
 }
 
+
+## Using model objects
 paths_fun(list(model_y, model_m2),
-          sims = 1000, boot = FALSE,
+          #sims = 1000, boot = FALSE,
           treat = "democ",
           outcome = "strikeo",
           x.train = x_mat,
           y.train = y_mat)
 
 paths_fun(list(model_y_bart, model_m2_bart),
-          sims = 1000, boot = FALSE,
+          #sims = 1000, boot = FALSE,
           treat = "democ",
           outcome = "strikeo",
+          x.train = x_mat,
+          y.train = y_mat)
+
+## Using formula
+paths_fun(formulas = list(formula_y, formula_m2),
+          models = c("lm", "lm"),
+          models_args = list(list(x = TRUE, y = TRUE),
+                             list(model = TRUE, x = TRUE, y = TRUE)),
+          #sims = 1000, boot = FALSE,
+          treat = "democ",
+          outcome = "strikeo",
+          data = dat,
           x.train = x_mat,
           y.train = y_mat)
