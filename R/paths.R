@@ -107,7 +107,6 @@ paths_fun <- function(model_objects = NULL,
 
     if(is.null(models)){
       warning("Argument 'models' is not supplied along side 'formulas', using 'lm' as default")
-
       models <- rep("lm", length(formulas))
 
     } else {
