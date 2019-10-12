@@ -91,7 +91,6 @@ paths <- function(formulas = NULL,
   } else {
 
     ### Option 1: User input a list of formula and corresponding methods and arguments ###
-
     K <- length(formulas)
 
     if(is.null(models)){
@@ -190,32 +189,33 @@ paths <- function(formulas = NULL,
     # output a dataset to use with the bootstrap
     dat_boot <- data
 
+  } else if(!is.null(model_objects)) {
+
+    #### TODO: Check if the two input methods are consistent ####
+
+    paths_fun(dat_boot, model_objects, treat_var, outcome_var, K, isLm, isGlm, isBart, w)
+
+    # boot_out <- boot::boot(data = mat,
+    #                        statistics = paths_fun,
+    #                        R = sims,
+    #                        sim = "ordinary",
+    #                        K = K,
+    #                        isLm = isLm,
+    #                        isGlm = isGlm,
+    #                        isBart = isBart,
+    #                        w = w,
+    #                        ...)
+    # boot_out <- boot::boot(data = mat,
+    #                        statistic = paths_fun,
+    #                        R = sims,
+    #                        sim = "ordinary",
+    #                        K = K,
+    #                        isLm = isLm,
+    #                        isGlm = isGlm,
+    #                        isBart = isBart)
+
+
   }
-
-  #### TODO: Check if the two input methods are consistent ####
-
-  paths_fun(dat_boot, model_objects, treat_var, outcome_var, K, isLm, isGlm, isBart, w)
-
-  # boot_out <- boot::boot(data = mat,
-  #                        statistics = paths_fun,
-  #                        R = sims,
-  #                        sim = "ordinary",
-  #                        K = K,
-  #                        isLm = isLm,
-  #                        isGlm = isGlm,
-  #                        isBart = isBart,
-  #                        w = w,
-  #                        ...)
-  # boot_out <- boot::boot(data = mat,
-  #                        statistic = paths_fun,
-  #                        R = sims,
-  #                        sim = "ordinary",
-  #                        K = K,
-  #                        isLm = isLm,
-  #                        isGlm = isGlm,
-  #                        isBart = isBart)
-
-
 }
 
 # internal function to calculate the estimates
@@ -225,6 +225,8 @@ paths_fun <- function(dat, model_objects, treat, outcome, K, isLm, isGlm, isBart
   y <- dat[[outcome]]
   x <- dat[, -c(1, which(names(dat) %in% outcome))]
   a <- x[[treat]]==1
+
+  #### TODO: Check if the two input methods are consistent ####
 
   # Adding weights, if needed
   if(!is.null(w)) {
@@ -353,3 +355,4 @@ paths(formulas = list(formula_y, formula_m2, formula_m1),
       outcome = "strikeo",
       x.train = x_mat,
       y.train = y_mat)
+
