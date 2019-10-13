@@ -64,12 +64,18 @@ paths <- function(formulas = NULL,
                   models = NULL,
                   models_args = NULL,
                   #mediators = NULL,
-                  #sims = 1000, boot = FALSE,
+                  sims = 1000,
+                  #boot = TRUE,
                   treat = NULL,
                   #covariates = NULL,
                   outcome = NULL,
                   w = NULL,
-                  data = NULL) {
+                  conf.level = 0.95,
+                  control.value = 0,
+                  treat.value = 1,
+                  long = TRUE,
+                  data = NULL,
+                  ...) {
 
   ### parse out function call ###
 
@@ -82,7 +88,7 @@ paths <- function(formulas = NULL,
                   "recurbart", "survbart",
                   "wbart")
 
-  ### TO-DO: Clean up input data
+  ### Extract information from input data ###
 
   ## Check to see which input method is used
   if(is.null(formulas)) {
@@ -91,7 +97,8 @@ paths <- function(formulas = NULL,
   } else {
 
     ### Option 1: User input a list of formula and corresponding methods and arguments ###
-    K <- length(formulas)
+    n_models <- length(formulas)
+    K <- n_models - 1
 
     if(is.null(models)){
       warning("Argument 'models' is not supplied along side 'formulas', using 'lm' as default")
@@ -103,12 +110,12 @@ paths <- function(formulas = NULL,
         models <- unlist(models)
       }
 
-      if(length(models) != K) {
+      if(length(models) != n_models) {
         stop("'formulas' and 'models' must be of equal length")
       }
     }
 
-    ## Retrieve variable names from formula
+    ## Retrieve variable names from formula ##
 
     # Retrieve outcome name from formula
     outcome_var <- sapply(formulas, function(f) all.vars(f)[[1]])
@@ -120,8 +127,8 @@ paths <- function(formulas = NULL,
 
     # Retrieve mediator names from formula
 
-    mediators_var <- vector("list", K-1)
-    for(i in 1:(K-1)) {
+    mediators_var <- vector("list", K)
+    for(i in 1:K) {
       mediators_var[[i]] <- dplyr::setdiff(all.vars(formulas[[i]]),
                                            all.vars(formulas[[i + 1]]))
     }
@@ -143,14 +150,14 @@ paths <- function(formulas = NULL,
     # Retrieve covariate names from formula
     covariates_var <- dplyr::setdiff(Reduce(intersect, lapply(formulas, all.vars)), c(treat_var, outcome_var))
 
-    # Fit models
-    model_objects <- vector("list", K)
-    isLm <- isGlm <- isBart <- vector("logical", K)
+    ## Fit a model for each of the input formulas ##
+    model_objects <- vector("list", n_models)
+    isLm <- isGlm <- isBart <- vector("logical", n_models)
 
     # strip data to complete cases for the necessary variables only
     data <- na.omit(data[, c(outcome_var, treat_var, unlist(mediators_var), covariates_var)])
 
-    for(i in 1:K) {
+    for(i in 1:n_models) {
       # Fit one model object for each formula
       if(models[i] %in% lm_names) {
         args <- c(list(formula = formulas[[i]],
@@ -191,42 +198,92 @@ paths <- function(formulas = NULL,
 
   }
 
-  #### TODO: Check if the two input methods are consistent ####
-
-  #paths_fun(dat_boot, model_objects, treat_var, outcome_var, K, isLm, isGlm, isBart, w)
-
-  boot_out <- boot::boot(data = mat,
-                         statistics = paths_fun,
+  ### Calculate point estimate and bootstrap for uncertainty estimate ###
+  boot_out <- boot::boot(data = dat_boot,
+                         statistic = paths_fun,
                          R = sims,
                          sim = "ordinary",
+                         formulas = formulas,
                          model_objects = model_objects,
-                         treat_var = treat_var,
-                         outcome_var = outcome_var,
+                         treat = treat_var,
+                         outcome = outcome_var,
                          K = K,
                          isLm = isLm,
                          isGlm = isGlm,
                          isBart = isBart,
                          w = w,
                          ...)
-  # boot_out <- boot::boot(data = mat,
-  #                        statistic = paths_fun,
-  #                        R = sims,
-  #                        sim = "ordinary",
-  #                        K = K,
-  #                        isLm = isLm,
-  #                        isGlm = isGlm,
-  #                        isBart = isBart)
 
+
+  ### Compute outputs and put them together ###
+
+  ## Parameters for confidence interval
+  low <- (1 - conf.level)/2
+  high <- 1 - low
+
+  ## Extract bootstrap output
+
+  # Original point estimate applied to original data
+  eff_te <- boot_out$t0[1]
+  eff_a_y <- boot_out$t0[2]
+  eff_a_mk_y <- boot_out$t0[-c(1,2)]
+
+  # Bootstrap replicates
+  eff_te_sim <- boot_out$t[,1]
+  eff_a_y_sim <- boot_out$t[,2]
+  eff_a_mk_y_sim <- boot_out$t[,-c(1,2)]
+
+  # Bootstrap CIs
+  eff_CIs <- apply(boot_out$t, 2, function(b) quantile(b, c(low, high), na.rm = TRUE))
+  eff_te_CIs <- eff_CIs[,1]
+  eff_a_y_CIs <- eff_CIs[,2]
+  eff_a_mk_y_CIs <- eff_CIs[,-c(1,2)]
+
+  # p-values
+  eff_te_p <- pval(eff_te_sim, eff_te)
+  eff_a_y_p <- pval(eff_a_y_sim, eff_te)
+  eff_a_mk_y_p <- mapply(pval, data.frame(eff_a_mk_y_sim), eff_a_mk_y)
+
+
+  # Unname objects for backward-compatibility
+  list2env(
+    lapply(list(eff_te = eff_te, eff_a_y = eff_a_y, eff_a_mk_y = eff_a_mk_y,
+                eff_a_y_sim = eff_a_y_sim, eff_a_mk_y_sim = eff_a_mk_y_sim,
+                eff_te_CIs = eff_te_CIs, eff_a_y_CIs = eff_a_y_CIs, eff_a_mk_y_CIs = eff_a_mk_y_CIs,
+                eff_te_p = eff_te_p, eff_a_y_p = eff_a_y_p, eff_a_mk_y_p = eff_a_mk_y_p),
+           unname),
+    envir = environment()
+  )
+
+  out <- list(est = list(eff_te = eff_te, eff_a_y = eff_a_y, eff_a_mk_y = eff_a_mk_y),
+              CIs = list(eff_te_CIs = eff_te_CIs, eff_a_y_CIs = eff_a_y_CIs, eff_a_mk_y_CIs = eff_a_mk_y_CIs),
+              p = list(eff_te_p = eff_te_p, eff_a_y_p = eff_a_y_p, eff_a_mk_y_p = eff_a_mk_y_p),
+              w = NULL,
+              call = cl,
+              conf.level = conf.level,
+              outcome = outcome_var, treat = treat_var, mediators = mediators_var, covariates = covariates_var,
+              formulas = formulas,
+              models = models,
+              models_args = models_args,
+              model_objects = model_objects)
+
+  if(long == TRUE){
+    out[["boot_out"]] = boot_out$t
+  }
+
+  class(out) <- "paths"
+
+  return(out)
 
 }
 
 # internal function to calculate the estimates
-paths_fun <- function(dat, model_objects, treat, outcome, K, isLm, isGlm, isBart, w = NULL) {
+paths_fun <- function(data, index, formulas, model_objects, treat, outcome, K, isLm, isGlm, isBart, w = NULL) {
 
   # extract vectors of outcomes, of all variables, and of treatment
-  y <- dat[[outcome]]
-  x <- dat[, -c(1, which(names(dat) %in% outcome))]
-  a <- x[[treat]]==1
+  y <- data[[outcome]][index]
+  x <- data[index,]
+  a <- x[[treat]][index]==1
 
   #### TODO: Check if the two input methods are consistent ####
 
@@ -244,7 +301,6 @@ paths_fun <- function(dat, model_objects, treat, outcome, K, isLm, isGlm, isBart
   E_a1 <- mean(y[a])
   E_a0 <- mean(y[!a])
 
-
   # estimate components of causal paths
   x_a1 <- x[a,]
   x_a0 <- x[!a,]; x_a0[,treat] <- 1
@@ -255,24 +311,7 @@ paths_fun <- function(dat, model_objects, treat, outcome, K, isLm, isGlm, isBart
       y_1_mk_0 <- predict(model_objects[[k]], newdata = data.frame(x_a0))
     }
     if(isBart[k]) {
-      # match variable names from BART model (which is taken literally
-      # from the original model matrix)
-      # with variable names from x_a0 (which corresponds to actual
-      # column names from the original data frame)
-      bart_var <- colnames(model_objects[[k]]$varcount)
-      bart_var_cleaned <- sapply(bart_var, function(v) gsub(".+\\(", "", v))
-      bart_var_cleaned <- sapply(bart_var_cleaned, function(v) gsub("\\)", "", v))
-      bart_var_cleaned <- sapply(bart_var_cleaned, function(v) gsub("\\^.+", "", v))
-
-      mat_x_a0 <- model.matrix( ~ ., x_a0)[, -1, drop = FALSE]
-      colnames(mat_x_a0) <- sapply(colnames(mat_x_a0), function(v) gsub(".+\\(", "", v))
-      colnames(mat_x_a0) <- sapply(colnames(mat_x_a0), function(v) gsub("\\)", "", v))
-      colnames(mat_x_a0) <- sapply(colnames(mat_x_a0), function(v) gsub("\\^.+", "", v))
-      colnames(mat_x_a0) <- sapply(colnames(mat_x_a0), function(v) gsub("`", "", v))
-
-      mat_x_a0 <- mat_x_a0[,bart_var_cleaned]
-      colnames(mat_x_a0) <- bart_var
-
+      mat_x_a0 <- model.matrix(formulas[[k]], x_a0)[,-1]
       y_1_mk_0 <- predict(model_objects[[k]], newdata = mat_x_a0)[["prob.test.mean"]]
     }
 
@@ -283,10 +322,13 @@ paths_fun <- function(dat, model_objects, treat, outcome, K, isLm, isGlm, isBart
 
   eff_te <- E_a1 - E_a0                                 # Total effect
   eff_a_y <- E_y_1_mk_0[K] - E_a0                       # Direct effect
-  eff_a_mk_y <- c(E_a1, E_y_1_mk_0[-K]) - E_y_1_mk_0    # via each of K mediators
-  #eff_a_M_y <- E_a1 - E_y_1_mk_0[K]                     # via all mediators
+  if(K > 1) {
+    eff_a_mk_y <- c(E_a1, E_y_1_mk_0[-K]) - E_y_1_mk_0  # K indirect effects via each of K mediators
+  } else {
+    eff_a_mk_y <- E_a1 - E_y_1_mk_0[1]                  # If one mediator, only one indirect effect
+  }
 
-  out <- list(eff_te = eff_te,
+  out <- c(eff_te = eff_te,
               eff_a_y = eff_a_y,
               eff_a_mk_y = eff_a_mk_y)
 
@@ -294,67 +336,112 @@ paths_fun <- function(dat, model_objects, treat, outcome, K, isLm, isGlm, isBart
 
 }
 
+## Function to compute p-values
+pval <- function(x, xhat){
+  ## Compute p-values
+  if (xhat == 0) out <- 1
+  else {
+    out <- 2 * min(sum(x > 0), sum(x < 0)) / length(x)
+  }
+  return(min(out, 1))
+}
 
-## Using model objects
-paths(model_objects = list(model_y, model_m2),
-      #sims = 1000, boot = FALSE,
-      treat = "democ",
-      outcome = "strikeo",
-      x.train = x_mat,
-      y.train = y_mat)
+#####################################################
+# Summary method for paths objects
+#####################################################
+summary.paths <- function(object, ...){
+  structure(object, class = c("summary.path", class(object)))
+}
 
-paths(model_objects = list(model_y_bart, model_m2_bart),
-      #sims = 1000, boot = FALSE,
-      treat = "democ",
-      outcome = "strikeo",
-      x.train = x_mat,
-      y.train = y_mat)
+#' @rdname summary.paths
+#' @export
+print.summary.paths <- function(x, ...) {
 
-paths(model_objects = list(model_y_bart, model_m2_bart, model_m1_bart),
-      #sims = 1000, boot = FALSE,
-      treat = "democ",
-      outcome = "strikeo",
-      x.train = x_mat,
-      y.train = y_mat)
+  cat("\n")
 
-paths(model_objects = list(model_y, model_m2_bart, model_m1_bart),
-      #sims = 1000, boot = FALSE,
-      treat = "democ",
-      outcome = "strikeo",
-      x.train = x_mat,
-      y.train = y_mat)
+  cat("Causal Paths Analysis \n")
+
+  cat(
+    sprintf(
+      "Treatment: %s\n", x$treat_var
+    )
+  )
+  cat(
+    sprintf(
+      "Outcome: %s\n", x$outcome_var
+    )
+  )
+
+  invisible(x)
+}
+
+
+# ## Using model objects
+# paths(model_objects = list(model_y, model_m2),
+#       sims = 10,
+#       #boot = FALSE,
+#       treat = "democ",
+#       outcome = "strikeo",
+#       x.train = x_mat,
+#       y.train = y_mat)
+#
+# paths(model_objects = list(model_y_bart, model_m2_bart),
+#       #sims = 1000, boot = FALSE,
+#       treat = "democ",
+#       outcome = "strikeo",
+#       x.train = x_mat,
+#       y.train = y_mat)
+#
+# paths(model_objects = list(model_y_bart, model_m2_bart, model_m1_bart),
+#       #sims = 1000, boot = FALSE,
+#       treat = "democ",
+#       outcome = "strikeo",
+#       x.train = x_mat,
+#       y.train = y_mat)
+#
+# paths(model_objects = list(model_y, model_m2_bart, model_m1_bart),
+#       #sims = 1000, boot = FALSE,
+#       treat = "democ",
+#       outcome = "strikeo",
+#       x.train = x_mat,
+#       y.train = y_mat)
 
 ## Using formula
-paths(formulas = list(formula_y, formula_m2),
+path_out <- paths(formulas = list(formula_y, formula_m2),
       models = c("lm", "lm"),
       models_args = list(list(x = TRUE, y = TRUE),
                          list(model = TRUE, x = TRUE, y = TRUE)),
-      #sims = 1000, boot = FALSE,
+      sims = 1000,
       treat = "democ",
       outcome = "strikeo",
-      data = dat,
-      x.train = x_mat,
-      y.train = y_mat)
+      data = peace)
 
-paths(formulas = list(formula_y, formula_m2),
+path_out <- paths(formulas = list(formula_y, formula_m2, formula_m1),
+              models = c("lm", "lm", "lm"),
+              models_args = list(list(x = TRUE, y = TRUE),
+                                 list(model = TRUE, x = TRUE, y = TRUE),
+                                 NULL),
+              #sims = 1000, boot = FALSE,
+              treat = "democ",
+              outcome = "strikeo",
+              data = peace)
+
+path_out <- paths(formulas = list(formula_y, formula_m2),
       models = c("pbart", "pbart"),
       models_args = list(list(sparse = TRUE),
                          list(theta = 0)),
-      #sims = 1000, boot = FALSE,
+      sims = 20,
       treat = "democ",
       outcome = "strikeo",
-      data = dat,
-      x.train = x_mat,
-      y.train = y_mat)
+      data = peace,
+      w = NULL)
 
-paths(formulas = list(formula_y, formula_m2, formula_m1),
+path_out <- paths(formulas = list(formula_y, formula_m2, formula_m1),
       models = c("pbart", "pbart"),
       models_args = list(list(sparse = TRUE),
                          list(theta = 0),
                          list(omega = 1)),
-      #sims = 1000, boot = FALSE,
+      sims = 20,
       treat = "democ",
-      outcome = "strikeo",
-      x.train = x_mat,
-      y.train = y_mat)
+      outcome = "strikeo")
 
