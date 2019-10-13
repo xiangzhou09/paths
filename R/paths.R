@@ -229,15 +229,15 @@ paths <- function(formulas = NULL,
   eff_a_mk_y <- boot_out$t0[-c(1,2)]
 
   # Bootstrap replicates
-  eff_te_sim <- boot_out$t[,1]
-  eff_a_y_sim <- boot_out$t[,2]
-  eff_a_mk_y_sim <- boot_out$t[,-c(1,2)]
+  eff_te_sim <- boot_out$t[, 1, drop = FALSE]
+  eff_a_y_sim <- boot_out$t[, 2, drop = FALSE]
+  eff_a_mk_y_sim <- boot_out$t[, -c(1,2), drop = FALSE]
 
   # Bootstrap CIs
   eff_CIs <- apply(boot_out$t, 2, function(b) quantile(b, c(low, high), na.rm = TRUE))
-  eff_te_CIs <- eff_CIs[,1]
-  eff_a_y_CIs <- eff_CIs[,2]
-  eff_a_mk_y_CIs <- eff_CIs[,-c(1,2)]
+  eff_te_CIs <- eff_CIs[, 1, drop = FALSE]
+  eff_a_y_CIs <- eff_CIs[, 2, drop = FALSE]
+  eff_a_mk_y_CIs <- eff_CIs[, -c(1,2), drop = FALSE]
 
   # p-values
   eff_te_p <- pval(eff_te_sim, eff_te)
@@ -261,11 +261,13 @@ paths <- function(formulas = NULL,
               w = NULL,
               call = cl,
               conf.level = conf.level,
+              sims = sims,
               outcome = outcome_var, treat = treat_var, mediators = mediators_var, covariates = covariates_var,
               formulas = formulas,
               models = models,
               models_args = models_args,
-              model_objects = model_objects)
+              model_objects = model_objects,
+              data = data)
 
   if(long == TRUE){
     out[["boot_out"]] = boot_out$t
@@ -347,30 +349,122 @@ pval <- function(x, xhat){
 }
 
 #####################################################
+# Print method for paths objects
+#####################################################
+print.paths <- function(x, ...) {
+  cat("\n")
+
+  cat("Causal Paths Analysis \n\n")
+
+  # Print function calll
+  cat("Call: ")
+  print(x$call)
+  cat("\n")
+
+  # Print model variables
+  cat("Treatment:", x$treat, "\n")
+  cat("Outcome:", x$outcome, "\n\n")
+
+  cat("Outcome model: ")
+  print(x$formulas[[1]])
+  cat("\n")
+
+  for(i in 1:length(x$mediators)) {
+    cat("Mediator ", i, ": ", paste(x$mediators[[i]], collapse = " + "), "\n", sep ="")
+  }
+  cat("\n")
+
+  # Print effect estimates
+  est <- unlist(x$est)
+  names(est) <- c("Total Effect", "Direct Effect",
+                  sapply(1:length(x$mediators), function(k) paste("T -> Mediator", k, "->> Y")))
+  cat("Causal Paths Estimates: \n")
+  print(est)
+
+  invisible(x)
+}
+
+#####################################################
 # Summary method for paths objects
 #####################################################
-summary.paths <- function(object, ...){
-  structure(object, class = c("summary.path", class(object)))
+summary.paths <- function(x, ...){
+
+  call <- x$call
+  treat <- x$treat
+  outcome <- x$outcome
+  mediators <- x$mediators
+  formulas <- x$formulas
+  nobs <- nrow(x$data)
+  sims <- x$sims
+
+  estimates <- cbind(unlist(x$est),
+                unlist(sapply(x$CIs,  function(c) c[1, ])),
+                unlist(sapply(x$CIs,  function(c) c[2, ])),
+                unlist(x$p))
+
+  rownames(estimates) <- c("Total Effect", "Direct Effect",
+                      sapply(1:length(x$mediators), function(k) paste("T -> Mediator", k, "->> Y")))
+  colnames(estimates) <- c("Estimate", paste(clp, "% CI Lower", sep=""),
+                      paste(clp, "% CI Upper", sep=""), "p-value")
+
+  out <- list(call = call,
+              treat = treat,
+              outcome = outcome,
+              mediators = mediators,
+              formulas = formulas,
+              nobs = nobs,
+              sims = sims,
+              estimates = estimates)
+  class(out) <- "summary.paths"
+
+  return(out)
 }
 
 #' @rdname summary.paths
 #' @export
 print.summary.paths <- function(x, ...) {
 
+  clp <- 100*x$conf.level
+
   cat("\n")
 
-  cat("Causal Paths Analysis \n")
+  cat("Causal Paths Analysis \n\n")
 
-  cat(
-    sprintf(
-      "Treatment: %s\n", x$treat_var
-    )
-  )
-  cat(
-    sprintf(
-      "Outcome: %s\n", x$outcome_var
-    )
-  )
+  # Print function calll
+  cat("Call: ")
+  print(x$call)
+  cat("\n")
+
+  # Print model variables
+  cat("Treatment:", x$treat, "\n")
+  cat("Outcome:", x$outcome, "\n\n")
+
+  cat("Outcome model: ")
+  print(x$formulas[[1]])
+  cat("\n")
+
+  for(i in 1:length(x$mediators)) {
+    cat("Mediator ", i, ": ", paste(x$mediators[[i]], collapse = " + "), "\n", sep ="")
+  }
+  cat("\n")
+
+  # Print output table
+
+  estimates <- x$estimates
+
+  # Use the printCoefmat() function to conveniently generate
+  # summary table
+  # Note the use of test statistic-like format
+  # (through tst.ind and dig.test) for Estimate and CIs columns
+  printCoefmat(estimates,
+               digits = 2,
+               P.values = TRUE,
+               tst.ind = 1:3,
+               dig.tst = 3,
+               has.Pvalue = TRUE)
+  cat("\n\n")
+  cat("Sample size:", x$nobs,"\n\n")
+  cat("Number of bootstrap simulations:", x$sims,"\n\n")
 
   invisible(x)
 }
