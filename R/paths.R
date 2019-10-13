@@ -392,6 +392,9 @@ summary.paths <- function(x, ...){
   formulas <- x$formulas
   nobs <- nrow(x$data)
   sims <- x$sims
+  conf.level <- x$conf.level
+
+  clp <- 100*x$conf.level
 
   estimates <- cbind(unlist(x$est),
                 unlist(sapply(x$CIs,  function(c) c[1, ])),
@@ -410,6 +413,7 @@ summary.paths <- function(x, ...){
               formulas = formulas,
               nobs = nobs,
               sims = sims,
+              conf.level = conf.level,
               estimates = estimates)
   class(out) <- "summary.paths"
 
