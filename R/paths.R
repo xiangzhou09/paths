@@ -63,11 +63,8 @@ treat <- "democ"
 paths <- function(formulas = NULL,
                   models = NULL,
                   models_args = NULL,
-                  #mediators = NULL,
                   sims = 1000,
-                  #boot = TRUE,
                   treat = NULL,
-                  #covariates = NULL,
                   outcome = NULL,
                   w = NULL,
                   conf.level = 0.95,
@@ -276,7 +273,6 @@ paths <- function(formulas = NULL,
   class(out) <- "paths"
 
   return(out)
-
 }
 
 # internal function to calculate the estimates
