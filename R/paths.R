@@ -458,5 +458,4 @@ plot.paths <- function(x, mediator_names = NULL,...) {
 
 }
 
-plot(path_out_peace)
-plot(path_out_peace, c("Morality", "Cost-Benefit Analysis"))
+
