@@ -1,65 +1,6 @@
-## TEST DATA ##
-
-library(haven)
-library(dplyr)
-library(tidyr)
-library(ggplot2)
-library(BART)
-
-expit <- function(x) exp(x)/(1+exp(x))
-
-CCES10_public <- read_dta("CCES10_public.dta")
-
-summary(CCES10_public$strikeo)
-
-peace <- CCES10_public %>%
-  dplyr::select(caseid, post, democ, strike, strikef, strikeo, threatc, cost, successc, immoral,
-                ally, trade, h1, i1, p1, e1, r1, male, white, age, ed4) %>%
-  mutate(ipw = 1)
-
-
-dat <- peace
-
-x <- c("ally", "trade", "h1", "i1", "p1", "e1", "r1", "male", "white", "log(age)", "factor(ed4)")
-a <- "democ"
-m1 <- c("threatc", "cost", "successc")
-m2 <- "immoral"
-y <- "strikeo"
-
-formula_y <- as.formula(paste(y, " ~ ", paste(c(x, a, m1, m2), collapse= "+")))
-formula_m2 <- as.formula(paste(y, " ~ ", paste(c(x, a, m2), collapse= "+")))
-formula_m1 <- as.formula(paste(y, " ~ ", paste(c(x, a), collapse= "+")))
-
-y_mat <- dat[[y]]
-x_mat <- x_mat_y <- model.matrix(formula_y, dat)[,-1] # pbart cannot handle multiple classes
-x_mat_m2 <- model.matrix(formula_m2, dat)[,-1]
-x_mat_m1 <- model.matrix(formula_m1, dat)[,-1]
-
-model_y <- lm(formula_y, data = dat)
-model_m2 <- lm(formula_m2, data = dat)
-model_m1 <- lm(formula_m1, data = dat)
-
-model_objects <- list(model_y, model_m2, model_m1)
-
-model_y_bart <- pbart(x.train = x_mat_y, y.train = y_mat)
-model_m2_bart <- pbart(x.train = x_mat_m2, y.train = y_mat)
-model_m1_bart <- pbart(x.train = x_mat_m1, y.train = y_mat)
-
-model_objects_bart <- list(model_y_bart, model_m2_bart, model_m1_bart)
-x.train <- x_mat_y
-y.train <- y_mat
-
-model_objects_mix <- list(model_y, model_m2_bart, model_m1)
-
-formulas <- list(formula_y, formula_m2, formula_m1)
-models <- c("lm", "pbart", "glm")
-models_args <- list(NULL, NULL, list(family = binomial(link = "logit")))
-
-treat <- "democ"
-
-#######
-
-# First function
+#####################################################
+# Primary function
+#####################################################
 paths <- function(formulas = NULL,
                   models = NULL,
                   models_args = NULL,
@@ -91,109 +32,72 @@ paths <- function(formulas = NULL,
   if(is.null(formulas)) {
     stop("'formulas' must be supplied as a list of model formulas")
 
+  }
+
+  ### Option 1: User input a list of formula and corresponding methods and arguments ###
+  n_models <- length(formulas)
+  K <- n_models - 1
+
+  if(is.null(models)){
+    warning("Argument 'models' is not supplied along side 'formulas', using 'lm' as default")
+    models <- rep("lm", length(formulas))
+
   } else {
 
-    ### Option 1: User input a list of formula and corresponding methods and arguments ###
-    n_models <- length(formulas)
-    K <- n_models - 1
-
-    if(is.null(models)){
-      warning("Argument 'models' is not supplied along side 'formulas', using 'lm' as default")
-      models <- rep("lm", length(formulas))
-
-    } else {
-
-      if(inherits(models, "list")) {
-        models <- unlist(models)
-      }
-
-      if(length(models) != n_models) {
-        stop("'formulas' and 'models' must be of equal length")
-      }
+    if(inherits(models, "list")) {
+      models <- unlist(models)
     }
 
-    ## Retrieve variable names from formula ##
-
-    # Retrieve outcome name from formula
-    outcome_var <- sapply(formulas, function(f) all.vars(f)[[1]])
-    if(length(unique(outcome_var)) > 1) {
-      stop("'formulas' must be a list of formulas with the same response variable")
-    } else {
-      outcome_var <- outcome_var[1]
+    if(length(models) != n_models) {
+      stop("'formulas' and 'models' must be of equal length")
     }
-
-    # Retrieve mediator names from formula
-
-    mediators_var <- vector("list", K)
-    for(i in 1:K) {
-      mediators_var[[i]] <- dplyr::setdiff(all.vars(formulas[[i]]),
-                                           all.vars(formulas[[i + 1]]))
-    }
-
-    # Check if treatment name is provided
-    if(is.null(treat)) {
-      stop("'treat' must be specified")
-    } else {
-      if(!treat %in% Reduce(intersect, lapply(formulas, all.vars))) {
-        stop("'treat' must be specified in every formula")
-      } else {
-        # check for variable in dataset with name that matches treat
-        # accounting for cases when treat is input flexibly e.g. log(treat)
-        treat_var_match <- sapply(all.vars(formulas[[1]]), function(t) grepl(t, treat, fixed = TRUE))
-        treat_var <- all.vars(formulas[[1]])[treat_var_match][1]
-      }
-    }
-
-    # Retrieve covariate names from formula
-    covariates_var <- dplyr::setdiff(Reduce(intersect, lapply(formulas, all.vars)), c(treat_var, outcome_var))
-
-    ## Fit a model for each of the input formulas ##
-    model_objects <- vector("list", n_models)
-    isLm <- isGlm <- isBart <- vector("logical", n_models)
-
-    # strip data to complete cases for the necessary variables only
-    data <- na.omit(data[, c(outcome_var, treat_var, unlist(mediators_var), covariates_var)])
-
-    for(i in 1:n_models) {
-      # Fit one model object for each formula
-      if(models[i] %in% lm_names) {
-        args <- c(list(formula = formulas[[i]],
-                       data = data),
-                  models_args[[i]])
-
-        model_objects[[i]] <- do.call(lm, args)
-        isLm[i] <- TRUE
-
-      } else if(models[i] %in% glm_names) {
-        args <- c(list(formula = formulas[[i]],
-                       data = data),
-                  models_args[[i]])
-
-        model_objects[[i]] <- do.call(glm, args)
-        isGlm[i] <- TRUE
-
-      } else if(models[i] %in% bart_names) {
-        # bart does not automatically convert flexibly named
-        # variables in formulas e.g. log(X)
-        x.train <- model.matrix(formulas[[i]], data)[,-1]
-        y.train <- model.frame(formulas[[i]], data)[,1]
-
-        args <- c(list(x.train = x.train,
-                       y.train = y.train),
-                  models_args[[i]])
-
-        ## TO-DO: Decide which bart function to use here!
-
-        model_objects[[i]] <- do.call(pbart, args)
-
-        isBart[i] <- TRUE
-      }
-
-    }
-    # output a dataset to use with the bootstrap
-    dat_boot <- data
-
   }
+
+  ## Retrieve variable names from formula ##
+
+  # Retrieve outcome name from formula
+  outcome_var <- sapply(formulas, function(f) all.vars(f)[[1]])
+  if(length(unique(outcome_var)) > 1) {
+    stop("'formulas' must be a list of formulas with the same response variable")
+  } else {
+    outcome_var <- outcome_var[1]
+  }
+
+  # Retrieve mediator names from formula
+
+  mediators_var <- vector("list", K)
+  for(i in K:1) {
+    mediators_var[[i]] <- dplyr::setdiff(all.vars(formulas[[i]]),
+                                         all.vars(formulas[[i + 1]]))
+  }
+
+  # Check if treatment name is provided
+  if(is.null(treat)) {
+    stop("'treat' must be specified")
+  } else {
+    if(!treat %in% Reduce(intersect, lapply(formulas, all.vars))) {
+      stop("'treat' must be specified in every formula")
+    } else {
+      # check for variable in dataset with name that matches treat
+      # accounting for cases when treat is input flexibly e.g. log(treat)
+      treat_var_match <- sapply(all.vars(formulas[[1]]), function(t) grepl(t, treat, fixed = TRUE))
+      treat_var <- all.vars(formulas[[1]])[treat_var_match][1]
+    }
+  }
+
+  # Retrieve covariate names from formula
+  covariates_var <- dplyr::setdiff(Reduce(intersect, lapply(formulas, all.vars)), c(treat_var, outcome_var))
+
+  ## Check model types
+  isLm <- models %in% lm_names
+  isGlm <- models %in% glm_names
+  isBart <- models %in% bart_names
+
+  ## strip data to complete cases for the necessary variables only to prepare for bootstrap
+  dat_boot <- na.omit(data[, c(outcome_var, treat_var, unlist(mediators_var), covariates_var)])
+
+  ## Calculate models using original data
+  model_objects <- paths_fit(dat_boot, formulas, models_args, isLm, isGlm, isBart)
 
   ### Calculate point estimate and bootstrap for uncertainty estimate ###
   boot_out <- boot::boot(data = dat_boot,
@@ -201,7 +105,7 @@ paths <- function(formulas = NULL,
                          R = sims,
                          sim = "ordinary",
                          formulas = formulas,
-                         model_objects = model_objects,
+                         models_args = models_args,
                          treat = treat_var,
                          outcome = outcome_var,
                          K = K,
@@ -275,13 +179,58 @@ paths <- function(formulas = NULL,
   return(out)
 }
 
-# internal function to calculate the estimates
-paths_fun <- function(data, index, formulas, model_objects, treat, outcome, K, isLm, isGlm, isBart, w = NULL) {
+#### internal function to refit the model given formulas
+paths_fit <- function(data, formulas, models_args, isLm, isGlm, isBart) {
+
+  n_models <- length(formulas)
+
+  ## Fit a model for each of the input formulas ##
+  model_objects <- vector("list", n_models)
+
+  for(i in 1:n_models) {
+    # Fit one model object for each formula
+    if(isLm[i]) {
+      args <- c(list(formula = formulas[[i]],
+                     data = data),
+                models_args[[i]])
+
+      model_objects[[i]] <- do.call(lm, args)
+
+    } else if(isGlm[i]) {
+      args <- c(list(formula = formulas[[i]],
+                     data = data),
+                models_args[[i]])
+
+      model_objects[[i]] <- do.call(glm, args)
+
+    } else if(isBart[i]) {
+      # bart does not automatically convert flexibly named
+      # variables in formulas e.g. log(X)
+      x.train <- model.matrix(formulas[[i]], data)[,-1]
+      y.train <- model.frame(formulas[[i]], data)[,1]
+
+      args <- c(list(x.train = x.train,
+                     y.train = y.train),
+                models_args[[i]])
+
+      ## TO-DO: Decide which bart function to use here!
+
+      model_objects[[i]] <- do.call(pbart, args)
+    }
+
+  }
+
+  return(model_objects)
+}
+
+#### internal function to calculate the estimates
+paths_fun <- function(data, index, formulas, models_args, treat, outcome, K, isLm, isGlm, isBart, w = NULL) {
 
   # extract vectors of outcomes, of all variables, and of treatment
-  y <- data[[outcome]][index]
   x <- data[index,]
-  a <- x[[treat]][index]==1
+
+  y <- x[[outcome]]
+  a <- x[[treat]]==1
 
   #### TODO: Check if the two input methods are consistent ####
 
@@ -302,6 +251,8 @@ paths_fun <- function(data, index, formulas, model_objects, treat, outcome, K, i
   # estimate components of causal paths
   x_a1 <- x[a,]
   x_a0 <- x[!a,]; x_a0[,treat] <- 1
+
+  model_objects <- paths_fit(x, formulas, models_args, isLm, isGlm, isBart)
 
   E_y_1_mk_0 <- sapply(K:1, function(k) {
     # predicting outcome conditioning on treatment, mediators M_k and X
@@ -327,14 +278,14 @@ paths_fun <- function(data, index, formulas, model_objects, treat, outcome, K, i
   }
 
   out <- c(eff_te = eff_te,
-              eff_a_y = eff_a_y,
-              eff_a_mk_y = eff_a_mk_y)
+           eff_a_y = eff_a_y,
+           eff_a_mk_y = eff_a_mk_y)
 
   return(out)
 
 }
 
-## Function to compute p-values
+#### internal function to calculate p-values
 pval <- function(x, xhat){
   ## Compute p-values
   if (xhat == 0) out <- 1
@@ -383,6 +334,8 @@ print.paths <- function(x, ...) {
 #####################################################
 # Summary method for paths objects
 #####################################################
+#' @rdname summary.paths
+#' @export
 summary.paths <- function(x, ...){
 
   call <- x$call
@@ -397,14 +350,14 @@ summary.paths <- function(x, ...){
   clp <- 100*x$conf.level
 
   estimates <- cbind(unlist(x$est),
-                unlist(sapply(x$CIs,  function(c) c[1, ])),
-                unlist(sapply(x$CIs,  function(c) c[2, ])),
-                unlist(x$p))
+                     unlist(sapply(x$CIs,  function(c) c[1, ])),
+                     unlist(sapply(x$CIs,  function(c) c[2, ])),
+                     unlist(x$p))
 
   rownames(estimates) <- c("Total Effect", "Direct Effect",
-                      sapply(1:length(x$mediators), function(k) paste("T -> Mediator", k, "->> Y")))
+                           sapply(1:length(x$mediators), function(k) paste("T -> Mediator", k, "->> Y")))
   colnames(estimates) <- c("Estimate", paste(clp, "% CI Lower", sep=""),
-                      paste(clp, "% CI Upper", sep=""), "p-value")
+                           paste(clp, "% CI Upper", sep=""), "p-value")
 
   out <- list(call = call,
               treat = treat,
@@ -469,73 +422,41 @@ print.summary.paths <- function(x, ...) {
   invisible(x)
 }
 
+#####################################################
+# Plot method for paths objects
+#####################################################
+#' @rdname plot.paths
+#' @export
+#'
+plot.paths <- function(x, mediator_names = NULL,...) {
 
-# ## Using model objects
-# paths(model_objects = list(model_y, model_m2),
-#       sims = 10,
-#       #boot = FALSE,
-#       treat = "democ",
-#       outcome = "strikeo",
-#       x.train = x_mat,
-#       y.train = y_mat)
-#
-# paths(model_objects = list(model_y_bart, model_m2_bart),
-#       #sims = 1000, boot = FALSE,
-#       treat = "democ",
-#       outcome = "strikeo",
-#       x.train = x_mat,
-#       y.train = y_mat)
-#
-# paths(model_objects = list(model_y_bart, model_m2_bart, model_m1_bart),
-#       #sims = 1000, boot = FALSE,
-#       treat = "democ",
-#       outcome = "strikeo",
-#       x.train = x_mat,
-#       y.train = y_mat)
-#
-# paths(model_objects = list(model_y, model_m2_bart, model_m1_bart),
-#       #sims = 1000, boot = FALSE,
-#       treat = "democ",
-#       outcome = "strikeo",
-#       x.train = x_mat,
-#       y.train = y_mat)
+  if(is.null(mediator_names)){
+    mediators <- sapply(x$mediators, function(m) paste(m, collapse = " + "))
+  } else {
+    if(length(mediator_names) != length(x$mediators)) {
+      stop("'mediator_names' must have the same length with 'mediators'")
+    }
+    mediators <- mediator_names
+  }
 
-## Using formula
-path_out <- paths(formulas = list(formula_y, formula_m2),
-      models = c("lm", "lm"),
-      models_args = list(list(x = TRUE, y = TRUE),
-                         list(model = TRUE, x = TRUE, y = TRUE)),
-      sims = 1000,
-      treat = "democ",
-      outcome = "strikeo",
-      data = peace)
+  estimand <- c("Total Effect", "Direct Effect",
+                paste("via", mediators))
 
-path_out <- paths(formulas = list(formula_y, formula_m2, formula_m1),
-              models = c("lm", "lm", "lm"),
-              models_args = list(list(x = TRUE, y = TRUE),
-                                 list(model = TRUE, x = TRUE, y = TRUE),
-                                 NULL),
-              #sims = 1000, boot = FALSE,
-              treat = "democ",
-              outcome = "strikeo",
-              data = peace)
+  plot_data <- data.frame(est = unlist(x$est),
+                     lower = unlist(sapply(x$CIs,  function(c) c[1, ])),
+                     upper = unlist(sapply(x$CIs,  function(c) c[2, ])),
+                     estimand = factor(estimand, levels = rev(estimand)))
 
-path_out <- paths(formulas = list(formula_y, formula_m2),
-      models = c("pbart", "pbart"),
-      models_args = list(list(sparse = TRUE),
-                         list(theta = 0)),
-      sims = 20,
-      treat = "democ",
-      outcome = "strikeo",
-      data = peace,
-      w = NULL)
+  ggplot(plot_data, aes(x = estimand, y = est)) +
+    geom_pointrange(aes(ymin = lower, ymax = upper), size = 1) +
+    geom_vline(xintercept = 0, linetype = 2) +
+    xlab("") +
+    ylab("Estimates of Total and Path-Specific Effects") +
+    coord_flip() +
+    theme_minimal(base_size = 14) +
+    theme(legend.position = "bottom", legend.title = element_blank())
 
-path_out <- paths(formulas = list(formula_y, formula_m2, formula_m1),
-      models = c("pbart", "pbart"),
-      models_args = list(list(sparse = TRUE),
-                         list(theta = 0),
-                         list(omega = 1)),
-      sims = 20,
-      treat = "democ",
-      outcome = "strikeo")
+}
 
+plot(path_out_peace)
+plot(path_out_peace, c("Morality", "Cost-Benefit Analysis"))
