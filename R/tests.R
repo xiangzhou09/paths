@@ -34,6 +34,7 @@ models <- c("lm", "pbart", "glm")
 models_args <- list(NULL, NULL, list(family = binomial(link = "logit")))
 
 treat <- "democ"
+sims <- R <- 20
 
 #### Test data: results from the paper
 
@@ -69,7 +70,7 @@ path_out <- paths(formulas = list(formula_y, formula_m2, formula_m1),
                   models_args = list(list(x = TRUE, y = TRUE),
                                      list(model = TRUE, x = TRUE, y = TRUE),
                                      NULL),
-                  #sims = 1000, boot = FALSE,
+                  sims = 5,
                   treat = "democ",
                   outcome = "strikeo",
                   data = peace)

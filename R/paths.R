@@ -67,7 +67,7 @@ paths <- function(formulas = NULL,
 
   mediators_var <- vector("list", K)
   for(i in K:1) {
-    mediators_var[[i]] <- dplyr::setdiff(all.vars(formulas[[i]]),
+    mediators_var[[K+1-i]] <- dplyr::setdiff(all.vars(formulas[[i]]),
                                          all.vars(formulas[[i + 1]]))
   }
 
@@ -97,7 +97,7 @@ paths <- function(formulas = NULL,
   dat_boot <- na.omit(data[, c(outcome_var, treat_var, unlist(mediators_var), covariates_var)])
 
   ## Calculate models using original data
-  model_objects <- paths_fit(dat_boot, formulas, models_args, isLm, isGlm, isBart)
+  model_objects <- model_fit(dat_boot, formulas, models_args, isLm, isGlm, isBart)
 
   ### Calculate point estimate and bootstrap for uncertainty estimate ###
   boot_out <- boot::boot(data = dat_boot,
@@ -123,42 +123,63 @@ paths <- function(formulas = NULL,
   high <- 1 - low
 
   ## Extract bootstrap output
-
   # Original point estimate applied to original data
   eff_te <- boot_out$t0[1]
-  eff_a_y <- boot_out$t0[2]
-  eff_a_mk_y <- boot_out$t0[-c(1,2)]
+  eff_a_y_t1 <- boot_out$t0[2]
+  eff_a_y_t2 <- boot_out$t0[3]
+  eff_a_mk_y_t1 <- boot_out$t0[4:(K+3)]
+  eff_a_mk_y_t2 <- boot_out$t0[(K+4):length(boot_out$t0)]
 
   # Bootstrap replicates
   eff_te_sim <- boot_out$t[, 1, drop = FALSE]
-  eff_a_y_sim <- boot_out$t[, 2, drop = FALSE]
-  eff_a_mk_y_sim <- boot_out$t[, -c(1,2), drop = FALSE]
+  eff_a_y_t1_sim <- boot_out$t[, 2, drop = FALSE]
+  eff_a_y_t2_sim <- boot_out$t[, 3, drop = FALSE]
+  eff_a_mk_y_t1_sim <- boot_out$t[, 4:(K+3), drop = FALSE]
+  eff_a_mk_y_t2_sim <- boot_out$t[, (K+4):ncol(boot_out$t), drop = FALSE]
 
   # Bootstrap CIs
   eff_CIs <- apply(boot_out$t, 2, function(b) quantile(b, c(low, high), na.rm = TRUE))
   eff_te_CIs <- eff_CIs[, 1, drop = FALSE]
-  eff_a_y_CIs <- eff_CIs[, 2, drop = FALSE]
-  eff_a_mk_y_CIs <- eff_CIs[, -c(1,2), drop = FALSE]
+  eff_a_y_t1_CIs <- eff_CIs[, 2, drop = FALSE]
+  eff_a_y_t2_CIs <- eff_CIs[, 3, drop = FALSE]
+  eff_a_mk_y_t1_CIs <- eff_CIs[, 4:(K+3), drop = FALSE]
+  eff_a_mk_y_t2_CIs <- eff_CIs[, (K+4):ncol(boot_out$t), drop = FALSE]
 
   # p-values
   eff_te_p <- pval(eff_te_sim, eff_te)
-  eff_a_y_p <- pval(eff_a_y_sim, eff_te)
-  eff_a_mk_y_p <- mapply(pval, data.frame(eff_a_mk_y_sim), eff_a_mk_y)
+  eff_a_y_t1_p <- pval(eff_a_y_t1_sim, eff_a_y_t1)
+  eff_a_y_t2_p <- pval(eff_a_y_t2_sim, eff_a_y_t2)
+  eff_a_mk_y_t1_p <- mapply(pval, data.frame(eff_a_mk_y_t1_sim), eff_a_mk_y_t1)
+  eff_a_mk_y_t2_p <- mapply(pval, data.frame(eff_a_mk_y_t2_sim), eff_a_mk_y_t2)
 
 
   # Unname objects for backward-compatibility
   list2env(
-    lapply(list(eff_te = eff_te, eff_a_y = eff_a_y, eff_a_mk_y = eff_a_mk_y,
-                eff_a_y_sim = eff_a_y_sim, eff_a_mk_y_sim = eff_a_mk_y_sim,
-                eff_te_CIs = eff_te_CIs, eff_a_y_CIs = eff_a_y_CIs, eff_a_mk_y_CIs = eff_a_mk_y_CIs,
-                eff_te_p = eff_te_p, eff_a_y_p = eff_a_y_p, eff_a_mk_y_p = eff_a_mk_y_p),
+    lapply(list(eff_te = eff_te,
+                eff_a_y_t1 = eff_a_y_t1, eff_a_y_t2 = eff_a_y_t2,
+                eff_a_mk_y_t1 = eff_a_mk_y_t1, eff_a_mk_y_t2 = eff_a_mk_y_t2,
+                eff_te_sim = eff_te_sim,
+                eff_a_y_t1_sim = eff_a_y_t1_sim, eff_a_y_t2_sim = eff_a_y_t2_sim,
+                eff_a_mk_y_t1_sim = eff_a_mk_y_t1_sim, eff_a_mk_y_t2_sim = eff_a_mk_y_t2_sim,
+                eff_te_CIs = eff_te_CIs,
+                eff_a_y_t1_CIs = eff_a_y_t1_CIs, eff_a_y_t2_CIs = eff_a_y_t2_CIs,
+                eff_a_mk_y_t1_CIs = eff_a_mk_y_t1_CIs, eff_a_mk_y_t2_CIs = eff_a_mk_y_t2_CIs,
+                eff_te_p = eff_te_p,
+                eff_a_y_t1_p = eff_a_y_t1_p, eff_a_y_t2_p = eff_a_y_t2_p,
+                eff_a_mk_y_t1_p = eff_a_mk_y_t1_p, eff_a_mk_y_t2_p = eff_a_mk_y_t2_p),
            unname),
     envir = environment()
   )
 
-  out <- list(est = list(eff_te = eff_te, eff_a_y = eff_a_y, eff_a_mk_y = eff_a_mk_y),
-              CIs = list(eff_te_CIs = eff_te_CIs, eff_a_y_CIs = eff_a_y_CIs, eff_a_mk_y_CIs = eff_a_mk_y_CIs),
-              p = list(eff_te_p = eff_te_p, eff_a_y_p = eff_a_y_p, eff_a_mk_y_p = eff_a_mk_y_p),
+  out <- list(est = list(eff_te = eff_te,
+                         eff_a_y_t1 = eff_a_y_t1, eff_a_mk_y_t1 = eff_a_mk_y_t1,
+                         eff_a_y_t2 = eff_a_y_t2, eff_a_mk_y_t2 = eff_a_mk_y_t2),
+              CIs = list(eff_te_CIs = eff_te_CIs,
+                         eff_a_y_t1_CIs = eff_a_y_t1_CIs, eff_a_mk_y_t1_CIs = eff_a_mk_y_t1_CIs,
+                         eff_a_y_t2_CIs = eff_a_y_t2_CIs, eff_a_mk_y_t2_CIs = eff_a_mk_y_t2_CIs),
+              p = list(eff_te_p = eff_te_p,
+                       eff_a_y_t1_p = eff_a_y_t1_p, eff_a_mk_y_t1_p = eff_a_mk_y_t1_p,
+                       eff_a_y_t2_p = eff_a_y_t2_p, eff_a_mk_y_t2_p = eff_a_mk_y_t2_p),
               w = NULL,
               call = cl,
               conf.level = conf.level,
@@ -171,7 +192,9 @@ paths <- function(formulas = NULL,
               data = data)
 
   if(long == TRUE){
-    out[["boot_out"]] = boot_out$t
+    out[["boot_out"]] = data.frame(eff_te_sim = eff_te_sim,
+                                   eff_a_y_t1_sim = eff_a_y_t1_sim, eff_a_y_t2_sim = eff_a_y_t2_sim,
+                                   eff_a_mk_y_t1_sim = eff_a_mk_y_t1_sim, eff_a_mk_y_t2_sim = eff_a_mk_y_t2_sim)
   }
 
   class(out) <- "paths"
@@ -180,7 +203,7 @@ paths <- function(formulas = NULL,
 }
 
 #### internal function to refit the model given formulas
-paths_fit <- function(data, formulas, models_args, isLm, isGlm, isBart) {
+model_fit <- function(data, formulas, models_args, isLm, isGlm, isBart) {
 
   n_models <- length(formulas)
 
@@ -232,8 +255,6 @@ paths_fun <- function(data, index, formulas, models_args, treat, outcome, K, isL
   y <- x[[outcome]]
   a <- x[[treat]]==1
 
-  #### TODO: Check if the two input methods are consistent ####
-
   # Adding weights, if needed
   if(!is.null(w)) {
     ipw <- w
@@ -244,15 +265,16 @@ paths_fun <- function(data, index, formulas, models_args, treat, outcome, K, isL
   ipw_a1 <- ipw[a]
   ipw_a0 <- ipw[!a]
 
+  ## Estimate components of causal paths
+  model_objects <- model_fit(x, formulas, models_args, isLm, isGlm, isBart)
+
   # averages of observed outcomes
   E_a1 <- mean(y[a])
   E_a0 <- mean(y[!a])
 
-  # estimate components of causal paths
+  # Decomposition Type 1
   x_a1 <- x[a,]
   x_a0 <- x[!a,]; x_a0[,treat] <- 1
-
-  model_objects <- paths_fit(x, formulas, models_args, isLm, isGlm, isBart)
 
   E_y_1_mk_0 <- sapply(K:1, function(k) {
     # predicting outcome conditioning on treatment, mediators M_k and X
@@ -267,19 +289,42 @@ paths_fun <- function(data, index, formulas, models_args, treat, outcome, K, isL
     weighted.mean(y_1_mk_0, w = ipw_a0)
   })
 
+  # Decomposition Type 2
+  x_a0 <- x[!a,]
+  x_a1 <- x[a,]; x_a1[,treat] <- 0
+
+  E_y_0_mk_1 <- sapply(K:1, function(k) {
+    # predicting outcome conditioning on treatment, mediators M_k and X
+    if(isLm[k] | isGlm[k]) {
+      y_0_mk_1 <- predict(model_objects[[k]], newdata = data.frame(x_a1))
+    }
+    if(isBart[k]) {
+      mat_x_a1 <- model.matrix(formulas[[k]], x_a1)[,-1]
+      y_0_mk_1 <- predict(model_objects[[k]], newdata = mat_x_a1)[["prob.test.mean"]]
+    }
+
+    weighted.mean(y_0_mk_1, w = ipw_a1)
+  })
+
   # construct path-specific effects
 
-  eff_te <- E_a1 - E_a0                                 # Total effect
-  eff_a_y <- E_y_1_mk_0[K] - E_a0                       # Direct effect
+  eff_te <- E_a1 - E_a0                                     # Total effect
+  eff_a_y_t1 <- E_y_1_mk_0[K] - E_a0                        # Direct effect
+  eff_a_y_t2 <- E_a1 - E_y_0_mk_1[K]
+
   if(K > 1) {
-    eff_a_mk_y <- c(E_a1, E_y_1_mk_0[-K]) - E_y_1_mk_0  # K indirect effects via each of K mediators
+    eff_a_mk_y_t1 <- c(E_a1, E_y_1_mk_0[-K]) - E_y_1_mk_0   # K indirect effects via each of K mediators
+    eff_a_mk_y_t2 <- E_y_0_mk_1  - c(E_a0, E_y_0_mk_1[-K])
   } else {
-    eff_a_mk_y <- E_a1 - E_y_1_mk_0[1]                  # If one mediator, only one indirect effect
+    eff_a_mk_y_t1 <- E_a1 - E_y_1_mk_0[1]                      # If one mediator, only one indirect effect
+    eff_a_mk_y_t2 <- E_y_0_mk_1[1] - E_a0
   }
 
   out <- c(eff_te = eff_te,
-           eff_a_y = eff_a_y,
-           eff_a_mk_y = eff_a_mk_y)
+           eff_a_y_t1 = eff_a_y_t1,
+           eff_a_y_t2 = eff_a_y_t2,
+           eff_a_mk_y_t1 = eff_a_mk_y_t1,
+           eff_a_mk_y_t2 = eff_a_mk_y_t2)
 
   return(out)
 
@@ -323,10 +368,20 @@ print.paths <- function(x, ...) {
 
   # Print effect estimates
   est <- unlist(x$est)
-  names(est) <- c("Total Effect", "Direct Effect",
+
+  i_t1 <- c(1, grep("t1", names(est)))
+  i_t2 <- c(1, grep("t2", names(est)))
+  est_t1 <- est[i_t1]
+  est_t2 <- est[i_t2]
+
+  names(est_t1) <- names(est_t2) <- c("Total Effect", "Direct Effect",
                   sapply(1:length(x$mediators), function(k) paste("T -> Mediator", k, "->> Y")))
   cat("Causal Paths Estimates: \n")
-  print(est)
+  cat("Type 1 Decomposition: \n")
+  print(est_t1)
+  cat("\n")
+  cat("Type 2 Decomposition: \n")
+  print(est_t2)
 
   invisible(x)
 }
@@ -354,9 +409,15 @@ summary.paths <- function(x, ...){
                      unlist(sapply(x$CIs,  function(c) c[2, ])),
                      unlist(x$p))
 
-  rownames(estimates) <- c("Total Effect", "Direct Effect",
+  i_t1 <- c(1, grep("t1", rownames(estimates)))
+  i_t2 <- c(1, grep("t2", rownames(estimates)))
+
+  estimates_t1 <- estimates[i_t1,]
+  estimates_t2 <- estimates[i_t2,]
+
+  rownames(estimates_t1) <- rownames(estimates_t2) <- c("Total Effect", "Direct Effect",
                            sapply(1:length(x$mediators), function(k) paste("T -> Mediator", k, "->> Y")))
-  colnames(estimates) <- c("Estimate", paste(clp, "% CI Lower", sep=""),
+  colnames(estimates_t1) <- colnames(estimates_t2) <- c("Estimate", paste(clp, "% CI Lower", sep=""),
                            paste(clp, "% CI Upper", sep=""), "p-value")
 
   out <- list(call = call,
@@ -367,7 +428,8 @@ summary.paths <- function(x, ...){
               nobs = nobs,
               sims = sims,
               conf.level = conf.level,
-              estimates = estimates)
+              estimates = list(estimates_t1 = estimates_t1,
+                               estimates_t2 = estimates_t2))
   class(out) <- "summary.paths"
 
   return(out)
@@ -403,13 +465,24 @@ print.summary.paths <- function(x, ...) {
 
   # Print output table
 
-  estimates <- x$estimates
+  estimates_t1 <- x$estimates$estimates_t1
+  estimates_t2 <- x$estimates$estimates_t2
 
   # Use the printCoefmat() function to conveniently generate
   # summary table
   # Note the use of test statistic-like format
   # (through tst.ind and dig.test) for Estimate and CIs columns
-  printCoefmat(estimates,
+  cat("Type 1 Decomposition: \n")
+  printCoefmat(estimates_t1,
+               digits = 2,
+               P.values = TRUE,
+               tst.ind = 1:3,
+               dig.tst = 3,
+               has.Pvalue = TRUE)
+
+  cat("\n\n")
+  cat("Type 2 Decomposition: \n")
+  printCoefmat(estimates_t2,
                digits = 2,
                P.values = TRUE,
                tst.ind = 1:3,
@@ -428,7 +501,7 @@ print.summary.paths <- function(x, ...) {
 #' @rdname plot.paths
 #' @export
 #'
-plot.paths <- function(x, mediator_names = NULL,...) {
+plot.paths <- function(x, mediator_names = NULL, type = c(1,2), ...) {
 
   if(is.null(mediator_names)){
     mediators <- sapply(x$mediators, function(m) paste(m, collapse = " + "))
@@ -439,22 +512,55 @@ plot.paths <- function(x, mediator_names = NULL,...) {
     mediators <- mediator_names
   }
 
+  if(any(!unique(type) %in% c(1,2))) {
+    stop("'type' must be either 1, 2, or c(1,2)")
+  }
+
   estimand <- c("Total Effect", "Direct Effect",
                 paste("via", mediators))
 
-  plot_data <- data.frame(est = unlist(x$est),
+  estimates <- data.frame(est = unlist(x$est),
                      lower = unlist(sapply(x$CIs,  function(c) c[1, ])),
                      upper = unlist(sapply(x$CIs,  function(c) c[2, ])),
-                     estimand = factor(estimand, levels = rev(estimand)))
+                     p = unlist(x$p))
 
-  ggplot(plot_data, aes(x = estimand, y = est)) +
-    geom_pointrange(aes(ymin = lower, ymax = upper), size = 1) +
+  i_t1 <- c(1, grep("t1", rownames(estimates)))
+  i_t2 <- c(1, grep("t2", rownames(estimates)))
+
+  plot_data_t1 <- data.frame(estimates[i_t1,],
+                        estimand = factor(estimand, levels = rev(estimand)),
+                        decomposition = "Type 1")
+
+  plot_data_t2 <- data.frame(estimates[i_t2,],
+                        estimand = factor(estimand, levels = rev(estimand)),
+                        decomposition = "Type 2")
+
+  if(identical(type, 1)) {
+    plot_data <- plot_data_t1
+    type_legend <- scale_color_manual(guide = FALSE, values = c("black"))
+
+  } else if(identical(type, 2)) {
+    plot_data <- plot_data_t2
+    type_legend <- scale_color_manual(guide = FALSE, values = c("black"))
+
+  } else if(identical(type, c(1,2))) {
+    plot_data <- rbind(plot_data_t1,
+                       plot_data_t2[-1,])
+    type_legend <- scale_color_manual(labels = c("Type 1 Decomposition", "Type 2 Decomposition"),
+                                      values = c("blue", "red"))
+  }
+
+
+  ggplot(plot_data, aes(x = estimand, y = est, colour = decomposition)) +
+    geom_pointrange(aes(ymin = lower, ymax = upper), size = 1,
+                    position = position_dodge2(width = .5)) +
     geom_vline(xintercept = 0, linetype = 2) +
     xlab("") +
     ylab("Estimates of Total and Path-Specific Effects") +
     coord_flip() +
     theme_minimal(base_size = 14) +
-    theme(legend.position = "bottom", legend.title = element_blank())
+    theme(legend.position = "bottom", legend.title = element_blank()) +
+    type_legend
 
 }
 
