@@ -7,10 +7,12 @@ paths <- function(formulas = NULL,
                   sims = 1000,
                   treat = NULL,
                   outcome = NULL,
-                  w = NULL,
+                  conditional = TRUE,
+                  ps = FALSE,
+                  ps_formula = update(formulas[[1]], paste(treat, "~ . -", treat)),
+                  ps_model = "glm",
+                  ps_model_args = list(binomial(link = "logit")),
                   conf.level = 0.95,
-                  control.value = 0,
-                  treat.value = 1,
                   long = TRUE,
                   data = NULL,
                   ...) {
@@ -28,18 +30,17 @@ paths <- function(formulas = NULL,
 
   ### Extract information from input data ###
 
-  ## Check to see which input method is used
+  ## Check if formulas are provided
   if(is.null(formulas)) {
     stop("'formulas' must be supplied as a list of model formulas")
-
   }
 
-  ### Option 1: User input a list of formula and corresponding methods and arguments ###
   n_models <- length(formulas)
   K <- n_models - 1
 
+  ## Check if model specifications are provided
   if(is.null(models)){
-    warning("Argument 'models' is not supplied along side 'formulas', using 'lm' as default")
+    warning("Argument 'models' is not supplied alongside 'formulas', using 'lm' as default")
     models <- rep("lm", length(formulas))
 
   } else {
@@ -51,6 +52,87 @@ paths <- function(formulas = NULL,
     if(length(models) != n_models) {
       stop("'formulas' and 'models' must be of equal length")
     }
+  }
+
+  if(is.null(models_args)){
+    warning("Argument 'models_args' is not supplied, using default specifications for all models")
+    models_args <- rep(NULL, length(formulas))
+
+  } else {
+
+    if(length(models_args) != n_models) {
+      stop("Arguments 'formulas' and 'models_args' must be of equal length")
+    }
+  }
+
+
+  ## Check model types
+  isLm <- models %in% lm_names
+  isGlm <- models %in% glm_names
+  isBart <- models %in% bart_names
+
+  ## If propensity score model is provided, check if model specification is correct
+  if(is.null(ps)) {
+    warning("Argument 'ps' is not provided, defaulting to FALSE")
+    ps <- FALSE
+  }
+
+  if(ps) {
+    if(is.null(ps_formula)) {
+      warning("Argument 'ps_formula' is not supplied even though 'ps' is TRUE,
+              using all mediators and covariates as default")
+      ps_formula <- list(update(formulas[[1]], paste(treat, "~ . -", treat)))
+    } else {
+
+      # model_fit requires a list of formula
+      if(!inherits(ps_formula, "list")) {
+        ps_formula <- list(ps_formula)
+      }
+
+      if(length(dplyr::setdiff(all.vars(ps_formula),
+                               all.vars(formulas[[1]]))) > 0) {
+        stop("'ps_formula' must contained variables in the main models")
+      }
+    }
+
+    if(is.null(ps_model)){
+      warning("Argument 'ps_model' is not supplied, using 'glm(binomial(link = 'logit')' as default")
+      ps_model <- "glm"
+      ps_model_args <- list(list(binomial(link = "logit")))
+    } else {
+
+      if(inherits(ps_model, "list")) {
+        ps_model <- unlist(ps_model)
+      }
+
+      if(length(ps_model) > 1) {
+        warning("Only 1 item is allowed for 'ps_model' but multiple are supplied. Using the first item only.")
+        ps_model <- ps_model[1]
+      }
+    }
+
+    if(is.null(ps_model_args)){
+      warning("Argument 'ps_model_arg' is not supplied, using default specifications")
+
+    } else {
+
+      # model_fit requires a list of list of model arguments
+      if(!inherits(ps_model_args, "list")) {
+        ps_model_args <- list(list(ps_model_args))
+      } else if(inherits(ps_model_args, "list") & !inherits(ps_model_args[[1]], "list")) {
+        ps_model_args <- list(ps_model_args)
+      }
+
+      if(length(ps_model_args) > 1) {
+        warning("Only 1 item is allowed for 'ps_model_args' but multiple are supplied. Using the first item only.")
+        ps_model_args <- ps_model_args[[1]]
+      }
+    }
+
+    # Check model type for propensity score model
+    ps_isLm <- ps_model %in% lm_names
+    ps_isGlm <- ps_model %in% glm_names
+    ps_isBart <- ps_model %in% bart_names
   }
 
   ## Retrieve variable names from formula ##
@@ -88,12 +170,7 @@ paths <- function(formulas = NULL,
   # Retrieve covariate names from formula
   covariates_var <- dplyr::setdiff(Reduce(intersect, lapply(formulas, all.vars)), c(treat_var, outcome_var))
 
-  ## Check model types
-  isLm <- models %in% lm_names
-  isGlm <- models %in% glm_names
-  isBart <- models %in% bart_names
-
-  ## strip data to complete cases for the necessary variables only to prepare for bootstrap
+  ## Strip data to complete cases for the necessary variables only to prepare for bootstrap
   dat_boot <- na.omit(data[, c(outcome_var, treat_var, unlist(mediators_var), covariates_var)])
 
   ## Calculate models using original data
@@ -108,11 +185,16 @@ paths <- function(formulas = NULL,
                          models_args = models_args,
                          treat = treat_var,
                          outcome = outcome_var,
-                         K = K,
+                         conditional = conditional,
                          isLm = isLm,
                          isGlm = isGlm,
                          isBart = isBart,
-                         w = w,
+                         ps = ps,
+                         ps_formula = ps_formula,
+                         ps_model_args = ps_model_args,
+                         ps_isLm = ps_isLm,
+                         ps_isGlm = ps_isGlm,
+                         ps_isBart = ps_isBart,
                          ...)
 
 
@@ -185,11 +267,13 @@ paths <- function(formulas = NULL,
               conf.level = conf.level,
               sims = sims,
               outcome = outcome_var, treat = treat_var, mediators = mediators_var, covariates = covariates_var,
+              conditional = conditional,
               formulas = formulas,
               models = models,
               models_args = models_args,
               model_objects = model_objects,
-              data = data)
+              data = data,
+              ps = ps)
 
   if(long == TRUE){
     out[["boot_out"]] = data.frame(eff_te_sim = eff_te_sim,
@@ -247,7 +331,11 @@ model_fit <- function(data, formulas, models_args, isLm, isGlm, isBart) {
 }
 
 #### internal function to calculate the estimates
-paths_fun <- function(data, index, formulas, models_args, treat, outcome, K, isLm, isGlm, isBart, w = NULL) {
+paths_fun <- function(data, index, formulas, models_args, treat, outcome, conditional, isLm, isGlm, isBart,
+                      ps, ps_formula, ps_model_args, ps_isLm, ps_isGlm, ps_isBart) {
+
+  n_models <- length(formulas)
+  K <- n_models - 1
 
   # extract vectors of outcomes, of all variables, and of treatment
   x <- data[index,]
@@ -256,8 +344,19 @@ paths_fun <- function(data, index, formulas, models_args, treat, outcome, K, isL
   a <- x[[treat]]==1
 
   # Adding weights, if needed
-  if(!is.null(w)) {
-    ipw <- w
+  if(ps) {
+
+    # fit propensity score model and extract weights
+    ps_mod <- model_fit(x, ps_formula, ps_model_args, ps_isLm, ps_isGlm, ps_isBart)[[1]]
+
+    ps_score <- fitted(ps_mod)
+
+    # for some models, need to coerce predicted probability to (0,1)
+    ps_score[ps_score < 0] <- 0
+    ps_score[ps_score > 1] <- 1
+
+    ipw <- a*mean(a)/ps_score + (1-a)*mean(1-a)/(1-ps_score)
+
   } else {
     ipw <- rep(1, length(y))
   }
@@ -268,20 +367,43 @@ paths_fun <- function(data, index, formulas, models_args, treat, outcome, K, isL
   ## Estimate components of causal paths
   model_objects <- model_fit(x, formulas, models_args, isLm, isGlm, isBart)
 
-  # averages of observed outcomes
-  E_a1 <- mean(y[a])
-  E_a0 <- mean(y[!a])
+  # Total effect
+  if(conditional) {
+    # for observational studies, TE must be calculated
+    # conditional on X
+    x_te <- x
+
+    if(isLm[n_models] | isGlm[n_models]){
+      x_te[,treat] <- 1
+      E_a1 <- mean(predict(model_objects[[n_models]], newdata = data.frame(x_te)))
+
+      x_te[,treat] <- 0
+      E_a0 <- mean(predict(model_objects[[n_models]], newdata = data.frame(x_te)))
+    } else if(isBart[n_models]) {
+      x_te[,treat] <- 1
+      mat_x_te <- model.matrix(formulas[[n_models]], x_te)[,-1]
+      E_a1 <- mean(predict(model_objects[[n_models]], newdata = mat_x_te)[["prob.test.mean"]])
+
+      x_te[,treat] <- 0
+      mat_x_te <- model.matrix(formulas[[n_models]], x_te)[,-1]
+      E_a0 <- mean(predict(model_objects[[n_models]], newdata = mat_x_te)[["prob.test.mean"]])
+    }
+  } else {
+    # for experiments, TE can be calculated unconditionally
+    E_a1 <- mean(y[a])
+    E_a0 <- mean(y[!a])
+
+  }
 
   # Decomposition Type 1
-  x_a1 <- x[a,]
-  x_a0 <- x[!a,]; x_a0[,treat] <- 1
+  x_a0 <- x[!a,]
+  x_a0[,treat] <- 1
 
   E_y_1_mk_0 <- sapply(K:1, function(k) {
     # predicting outcome conditioning on treatment, mediators M_k and X
     if(isLm[k] | isGlm[k]) {
       y_1_mk_0 <- predict(model_objects[[k]], newdata = data.frame(x_a0))
-    }
-    if(isBart[k]) {
+    } else if(isBart[k]) {
       mat_x_a0 <- model.matrix(formulas[[k]], x_a0)[,-1]
       y_1_mk_0 <- predict(model_objects[[k]], newdata = mat_x_a0)[["prob.test.mean"]]
     }
@@ -290,8 +412,8 @@ paths_fun <- function(data, index, formulas, models_args, treat, outcome, K, isL
   })
 
   # Decomposition Type 2
-  x_a0 <- x[!a,]
-  x_a1 <- x[a,]; x_a1[,treat] <- 0
+  x_a1 <- x[a,]
+  x_a1[,treat] <- 0
 
   E_y_0_mk_1 <- sapply(K:1, function(k) {
     # predicting outcome conditioning on treatment, mediators M_k and X
@@ -383,6 +505,13 @@ print.paths <- function(x, ...) {
   cat("Type 2 Decomposition: \n")
   print(est_t2)
 
+  cat("\n")
+  if(x$conditional){
+    cat("Total Effect calculated conditional on covariates \n")
+  } else {
+    cat("Total Effect calculated unconditionally \n")
+  }
+
   invisible(x)
 }
 
@@ -396,7 +525,9 @@ summary.paths <- function(x, ...){
   call <- x$call
   treat <- x$treat
   outcome <- x$outcome
+  conditional <- x$conditional
   mediators <- x$mediators
+  covariates <- x$covariates
   formulas <- x$formulas
   nobs <- nrow(x$data)
   sims <- x$sims
@@ -423,7 +554,9 @@ summary.paths <- function(x, ...){
   out <- list(call = call,
               treat = treat,
               outcome = outcome,
+              conditional = conditional,
               mediators = mediators,
+              covariates = covariates,
               formulas = formulas,
               nobs = nobs,
               sims = sims,
@@ -488,6 +621,14 @@ print.summary.paths <- function(x, ...) {
                tst.ind = 1:3,
                dig.tst = 3,
                has.Pvalue = TRUE)
+
+  cat("\n")
+  if(x$conditional){
+    cat("Total Effect calculated conditional on covariates \n")
+  } else {
+    cat("Total Effect calculated unconditionally \n")
+  }
+
   cat("\n\n")
   cat("Sample size:", x$nobs,"\n\n")
   cat("Number of bootstrap simulations:", x$sims,"\n\n")

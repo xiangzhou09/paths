@@ -36,6 +36,12 @@ models_args <- list(NULL, NULL, list(family = binomial(link = "logit")))
 treat <- "democ"
 sims <- R <- 20
 
+formula_a <- as.formula(paste(a, " ~ ", paste(c(x, m1, m2), collapse = "+")))
+model_a <- "glm"
+model_a_arg <- list(family = binomial(link = "logit"))
+
+model_fit(peace, list(formula_a), list(model_a_arg), isLm = FALSE, isGlm = TRUE, isBart = FALSE)
+
 #### Test data: results from the paper
 
 ## Example 1
@@ -54,6 +60,25 @@ peace_decomp <- data.frame(out) %>%
                                           "via Morality", "via Costs and Benefits", "via Costs and Benefits + Morality"))))
 
 #######
+## Testing path_fun
+paths_fun(data = peace,
+         index = 1:nrow(peace),
+         formulas = list(formula_y, formula_m2, formula_m1),
+         models_args = list(NULL,
+                            NULL,
+                            NULL),
+         treat = "democ",
+         outcome = "strikeo",
+         conditional = FALSE,
+         isLm = c(TRUE, TRUE, TRUE),
+         isGlm = c(FALSE, FALSE, FALSE),
+         isBart = c(FALSE, FALSE, FALSE),
+         ps = TRUE,
+         ps_formula = list(formula_a),
+         ps_model_args = list(list(binomial(link = "logit"))),
+         ps_isLm = FALSE,
+         ps_isGlm = TRUE,
+         ps_isBart = FALSE)
 
 ## Using formula
 path_out <- paths(formulas = list(formula_y, formula_m2),
@@ -75,22 +100,37 @@ path_out <- paths(formulas = list(formula_y, formula_m2, formula_m1),
                   outcome = "strikeo",
                   data = peace)
 
-path_out <- paths(formulas = list(formula_y, formula_m2),
-                  models = c("pbart", "pbart"),
+path_out <- paths(formulas = list(formula_y, formula_m2, formula_m1),
+                  models = c("pbart", "pbart", "pbart"),
                   models_args = list(list(sparse = TRUE),
-                                     list(theta = 0)),
-                  sims = 20,
+                                     list(theta = 0),
+                                     NULL),
+                  sims = 5,
                   treat = "democ",
                   outcome = "strikeo",
                   data = peace,
-                  w = NULL)
+                  parallel = "multicore",
+                  ncpus = 5)
+
+path_out <- paths(formulas = list(formula_y, formula_m2, formula_m1),
+                  models = c("lm", "lm", "lm"),
+                  sims = 5,
+                  treat = "democ",
+                  outcome = "strikeo",
+                  data = peace,
+                  parallel = "multicore",
+                  ncpus = 5,
+                  ps = TRUE,
+                  ps_formula = formula_a,
+                  ps_model = "lm",
+                  ps_model_args = list(NULL))
 
 # Model as in the paper
 path_out_peace <- paths(formulas = list(formula_y, formula_m2, formula_m1),
                   models = c("pbart", "pbart", "pbart"),
-                  models_args = list(list(sparse = TRUE),
-                                     list(theta = 0),
-                                     list(omega = 1)),
+                  models_args = list(NULL,
+                                     NULL,
+                                     NULL),
                   sims = 500,
                   treat = "democ",
                   outcome = "strikeo",
