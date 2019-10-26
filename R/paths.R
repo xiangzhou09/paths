@@ -7,10 +7,9 @@ paths <- function(formulas = NULL,
                   sims = 1000,
                   treat = NULL,
                   outcome = NULL,
+                  conditional = TRUE,
                   w = NULL,
                   conf.level = 0.95,
-                  control.value = 0,
-                  treat.value = 1,
                   long = TRUE,
                   data = NULL,
                   ...) {
@@ -108,7 +107,7 @@ paths <- function(formulas = NULL,
                          models_args = models_args,
                          treat = treat_var,
                          outcome = outcome_var,
-                         K = K,
+                         conditional = conditional,
                          isLm = isLm,
                          isGlm = isGlm,
                          isBart = isBart,
@@ -185,6 +184,7 @@ paths <- function(formulas = NULL,
               conf.level = conf.level,
               sims = sims,
               outcome = outcome_var, treat = treat_var, mediators = mediators_var, covariates = covariates_var,
+              conditional = conditional,
               formulas = formulas,
               models = models,
               models_args = models_args,
@@ -247,7 +247,10 @@ model_fit <- function(data, formulas, models_args, isLm, isGlm, isBart) {
 }
 
 #### internal function to calculate the estimates
-paths_fun <- function(data, index, formulas, models_args, treat, outcome, K, isLm, isGlm, isBart, w = NULL) {
+paths_fun <- function(data, index, formulas, models_args, treat, outcome, conditional, isLm, isGlm, isBart, w = NULL) {
+
+  n_models <- length(formulas)
+  K <- n_models - 1
 
   # extract vectors of outcomes, of all variables, and of treatment
   x <- data[index,]
@@ -268,20 +271,43 @@ paths_fun <- function(data, index, formulas, models_args, treat, outcome, K, isL
   ## Estimate components of causal paths
   model_objects <- model_fit(x, formulas, models_args, isLm, isGlm, isBart)
 
-  # averages of observed outcomes
-  E_a1 <- mean(y[a])
-  E_a0 <- mean(y[!a])
+  # Total effect
+  if(conditional) {
+    # for observational studies, TE must be calculated
+    # conditional on X
+    x_te <- x
+
+    if(isLm[n_models] | isGlm[n_models]){
+      x_te[,treat] <- 1
+      E_a1 <- mean(predict(model_objects[[n_models]], newdata = data.frame(x_te)))
+
+      x_te[,treat] <- 0
+      E_a0 <- mean(predict(model_objects[[n_models]], newdata = data.frame(x_te)))
+    } else if(isBart[n_models]) {
+      x_te[,treat] <- 1
+      mat_x_te <- model.matrix(formulas[[n_models]], x_te)[,-1]
+      E_a1 <- mean(predict(model_objects[[n_models]], newdata = mat_x_te)[["prob.test.mean"]])
+
+      x_te[,treat] <- 0
+      mat_x_te <- model.matrix(formulas[[n_models]], x_te)[,-1]
+      E_a0 <- mean(predict(model_objects[[n_models]], newdata = mat_x_te)[["prob.test.mean"]])
+    }
+  } else {
+    # for experiments, TE can be calculated unconditionally
+    E_a1 <- mean(y[a])
+    E_a0 <- mean(y[!a])
+
+  }
 
   # Decomposition Type 1
-  x_a1 <- x[a,]
-  x_a0 <- x[!a,]; x_a0[,treat] <- 1
+  x_a0 <- x[!a,]
+  x_a0[,treat] <- 1
 
   E_y_1_mk_0 <- sapply(K:1, function(k) {
     # predicting outcome conditioning on treatment, mediators M_k and X
     if(isLm[k] | isGlm[k]) {
       y_1_mk_0 <- predict(model_objects[[k]], newdata = data.frame(x_a0))
-    }
-    if(isBart[k]) {
+    } else if(isBart[k]) {
       mat_x_a0 <- model.matrix(formulas[[k]], x_a0)[,-1]
       y_1_mk_0 <- predict(model_objects[[k]], newdata = mat_x_a0)[["prob.test.mean"]]
     }
@@ -290,8 +316,8 @@ paths_fun <- function(data, index, formulas, models_args, treat, outcome, K, isL
   })
 
   # Decomposition Type 2
-  x_a0 <- x[!a,]
-  x_a1 <- x[a,]; x_a1[,treat] <- 0
+  x_a1 <- x[a,]
+  x_a1[,treat] <- 0
 
   E_y_0_mk_1 <- sapply(K:1, function(k) {
     # predicting outcome conditioning on treatment, mediators M_k and X
@@ -383,6 +409,13 @@ print.paths <- function(x, ...) {
   cat("Type 2 Decomposition: \n")
   print(est_t2)
 
+  cat("\n")
+  if(x$conditional){
+    cat("Total Effect calculated conditional on covariates \n")
+  } else {
+    cat("Total Effect calculated unconditionally \n")
+  }
+
   invisible(x)
 }
 
@@ -396,7 +429,9 @@ summary.paths <- function(x, ...){
   call <- x$call
   treat <- x$treat
   outcome <- x$outcome
+  conditional <- x$conditional
   mediators <- x$mediators
+  covariates <- x$covariates
   formulas <- x$formulas
   nobs <- nrow(x$data)
   sims <- x$sims
@@ -423,7 +458,9 @@ summary.paths <- function(x, ...){
   out <- list(call = call,
               treat = treat,
               outcome = outcome,
+              conditional = conditional,
               mediators = mediators,
+              covariates = covariates,
               formulas = formulas,
               nobs = nobs,
               sims = sims,
@@ -488,6 +525,14 @@ print.summary.paths <- function(x, ...) {
                tst.ind = 1:3,
                dig.tst = 3,
                has.Pvalue = TRUE)
+
+  cat("\n")
+  if(x$conditional){
+    cat("Total Effect calculated conditional on covariates \n")
+  } else {
+    cat("Total Effect calculated unconditionally \n")
+  }
+
   cat("\n\n")
   cat("Sample size:", x$nobs,"\n\n")
   cat("Number of bootstrap simulations:", x$sims,"\n\n")
