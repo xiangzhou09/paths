@@ -31,12 +31,16 @@ paths <- function(formulas = NULL,
   ### Extract information from input data ###
 
   ## Check if formulas are provided
-  if(is.null(formulas)) {
+  if(is.null(formulas)|!inherits(formulas, "list")) {
     stop("'formulas' must be supplied as a list of model formulas")
   }
 
   n_models <- length(formulas)
   K <- n_models - 1
+
+  if(n_models < 2){
+    stop("'formulas' must contain at least 2 formulas")
+  }
 
   ## Check if model specifications are provided
   if(is.null(models)){
@@ -59,6 +63,13 @@ paths <- function(formulas = NULL,
     models_args <- rep(NULL, length(formulas))
 
   } else {
+
+    if(!inherits(models_args, "list") | !all(sapply(models_args, function(arg) inherits(arg, "list")|is.null(arg)))) {
+      stop("Argument 'models_args' must be a list containing lists of arguments or NULL")
+    } else if (any(sapply(models_args, function(x) any(sapply(x, is.null))))) {
+      # prevent pbart from crashing if NULL is submitted as an argument
+      stop("No list of arguments within 'models_args' can contain NULL")
+    }
 
     if(length(models_args) != n_models) {
       stop("Arguments 'formulas' and 'models_args' must be of equal length")
@@ -116,10 +127,10 @@ paths <- function(formulas = NULL,
 
     } else {
 
-      # model_fit requires a list of list of model arguments
+      # model_fit requires a list of NULL and/or lists of model arguments
       if(!inherits(ps_model_args, "list")) {
         ps_model_args <- list(list(ps_model_args))
-      } else if(inherits(ps_model_args, "list") & !inherits(ps_model_args[[1]], "list")) {
+      } else if(!inherits(ps_model_args[[1]], "list") | !is.null(ps_model_args[[1]])) {
         ps_model_args <- list(ps_model_args)
       }
 
@@ -134,6 +145,7 @@ paths <- function(formulas = NULL,
     ps_isGlm <- ps_model %in% glm_names
     ps_isBart <- ps_model %in% bart_names
   }
+
 
   ## Retrieve variable names from formula ##
 
@@ -176,6 +188,7 @@ paths <- function(formulas = NULL,
   ## Calculate models using original data
   model_objects <- model_fit(dat_boot, formulas, models_args, isLm, isGlm, isBart)
 
+
   ### Calculate point estimate and bootstrap for uncertainty estimate ###
   boot_out <- boot::boot(data = dat_boot,
                          statistic = paths_fun,
@@ -185,10 +198,10 @@ paths <- function(formulas = NULL,
                          models_args = models_args,
                          treat = treat_var,
                          outcome = outcome_var,
-                         conditional = conditional,
                          isLm = isLm,
                          isGlm = isGlm,
                          isBart = isBart,
+                         conditional = conditional,
                          ps = ps,
                          ps_formula = ps_formula,
                          ps_model_args = ps_model_args,
@@ -197,6 +210,7 @@ paths <- function(formulas = NULL,
                          ps_isBart = ps_isBart,
                          ...)
 
+  print("done with bootstrap")
 
   ### Compute outputs and put them together ###
 
@@ -262,7 +276,6 @@ paths <- function(formulas = NULL,
               p = list(eff_te_p = eff_te_p,
                        eff_a_y_t1_p = eff_a_y_t1_p, eff_a_mk_y_t1_p = eff_a_mk_y_t1_p,
                        eff_a_y_t2_p = eff_a_y_t2_p, eff_a_mk_y_t2_p = eff_a_mk_y_t2_p),
-              w = NULL,
               call = cl,
               conf.level = conf.level,
               sims = sims,
@@ -289,7 +302,37 @@ paths <- function(formulas = NULL,
 #### internal function to refit the model given formulas
 model_fit <- function(data, formulas, models_args, isLm, isGlm, isBart) {
 
+  ## Input check for when model_fit is called independently outside of paths
+
+  # Check if formula(s) are provided correctly
+  if(is.null(formulas)|!inherits(formulas, "list")) {
+    stop("'formulas' must be supplied as a list of model formulas")
+  }
+
   n_models <- length(formulas)
+  K <- n_models - 1
+
+  n_models <- length(formulas)
+
+  # Check if model argument(s) are provided correctly
+  if(is.null(models_args)){
+    warning("Argument 'models_args' is not supplied, using default specifications for all models")
+    models_args <- rep(NULL, length(formulas))
+
+  } else {
+
+    if(!inherits(models_args, "list") | !all(sapply(models_args, function(arg) inherits(arg, "list")|is.null(arg)))) {
+      stop("Argument 'models_args' must be a list containing lists of arguments or NULL")
+    } else if (any(sapply(models_args, function(x) any(sapply(x, is.null))))) {
+      # prevent pbart from crashing if NULL is submitted as an argument
+      stop("No list of arguments within 'models_args' can contain NULL")
+    }
+
+    if(length(models_args) != n_models) {
+      stop("Arguments 'formulas' and 'models_args' must be of equal length")
+    }
+  }
+
 
   ## Fit a model for each of the input formulas ##
   model_objects <- vector("list", n_models)
@@ -318,7 +361,8 @@ model_fit <- function(data, formulas, models_args, isLm, isGlm, isBart) {
 
       args <- c(list(x.train = x.train,
                      y.train = y.train),
-                models_args[[i]])
+                models_args[[i]],
+                list(printevery = 2000))
 
       ## TO-DO: Decide which bart function to use here!
 
@@ -330,9 +374,13 @@ model_fit <- function(data, formulas, models_args, isLm, isGlm, isBart) {
   return(model_objects)
 }
 
-#### internal function to calculate the estimates
-paths_fun <- function(data, index, formulas, models_args, treat, outcome, conditional, isLm, isGlm, isBart,
-                      ps, ps_formula, ps_model_args, ps_isLm, ps_isGlm, ps_isBart) {
+paths_fun <- function(data, index = 1:nrow(data),
+                      formulas, models_args,
+                      treat, outcome,
+                      conditional,
+                      isLm, isGlm, isBart,
+                      ps, ps_formula, ps_model_args,
+                      ps_isLm, ps_isGlm, ps_isBart) {
 
   n_models <- length(formulas)
   K <- n_models - 1
@@ -347,7 +395,7 @@ paths_fun <- function(data, index, formulas, models_args, treat, outcome, condit
   if(ps) {
 
     # fit propensity score model and extract weights
-    ps_mod <- model_fit(x, ps_formula, ps_model_args, ps_isLm, ps_isGlm, ps_isBart)[[1]]
+    ps_mod <- model_fit(x, list(ps_formula), list(ps_model_args), ps_isLm, ps_isGlm, ps_isBart)[[1]]
 
     ps_score <- fitted(ps_mod)
 
@@ -381,11 +429,11 @@ paths_fun <- function(data, index, formulas, models_args, treat, outcome, condit
       E_a0 <- mean(predict(model_objects[[n_models]], newdata = data.frame(x_te)))
     } else if(isBart[n_models]) {
       x_te[,treat] <- 1
-      mat_x_te <- model.matrix(formulas[[n_models]], x_te)[,-1]
+      mat_x_te <- model.matrix(formulas[[n_models]], x_te)[,colnames(model_objects[[n_models]]$varcount)]
       E_a1 <- mean(predict(model_objects[[n_models]], newdata = mat_x_te)[["prob.test.mean"]])
 
       x_te[,treat] <- 0
-      mat_x_te <- model.matrix(formulas[[n_models]], x_te)[,-1]
+      mat_x_te <- model.matrix(formulas[[n_models]], x_te)[,colnames(model_objects[[n_models]]$varcount)]
       E_a0 <- mean(predict(model_objects[[n_models]], newdata = mat_x_te)[["prob.test.mean"]])
     }
   } else {
@@ -402,13 +450,41 @@ paths_fun <- function(data, index, formulas, models_args, treat, outcome, condit
   E_y_1_mk_0 <- sapply(K:1, function(k) {
     # predicting outcome conditioning on treatment, mediators M_k and X
     if(isLm[k] | isGlm[k]) {
-      y_1_mk_0 <- predict(model_objects[[k]], newdata = data.frame(x_a0))
+      y_1_mk_0 <- predict(model_objects[[k]], newdata = x_a0)
     } else if(isBart[k]) {
-      mat_x_a0 <- model.matrix(formulas[[k]], x_a0)[,-1]
+      mat_x_a0 <- model.matrix(formulas[[k]], x_a0)[,colnames(model_objects[[k]]$varcount)]
       y_1_mk_0 <- predict(model_objects[[k]], newdata = mat_x_a0)[["prob.test.mean"]]
     }
 
-    weighted.mean(y_1_mk_0, w = ipw_a0)
+    if(conditional) {
+      # for observational studies, E[y_1_mk_0] must be estimated
+      # using a model conditional on X with model specifications
+      # following Y ~ A + X model
+
+      x_a0[[outcome]] <- y_1_mk_0
+      formula_yhat <- update(formulas[[n_models]], paste(". ~ . -", treat))
+
+      model_yhat <- model_fit(x_a0,
+                              list(formula_yhat),
+                              list(models_args[[n_models]]),
+                              isLm[n_models],
+                              isGlm[n_models],
+                              isBart[n_models])[[1]]
+
+      if(isLm[n_models] | isGlm[n_models]) {
+        y_1_mk_0 <- predict(model_yhat, newdata = x)
+      } else if(isBart[n_models]) {
+        mat_x <- model.matrix(formula_yhat, x)[,colnames(model_yhat$varcount)]
+        y_1_mk_0 <- predict(model_yhat, newdata = mat_x)[["prob.test.mean"]]
+      }
+
+      mean(y_1_mk_0)
+
+    } else {
+
+      # for experiments, E[y_1_mk_0] can be calculated unconditionally
+      weighted.mean(y_1_mk_0, w = ipw_a0)
+    }
   })
 
   # Decomposition Type 2
@@ -421,7 +497,7 @@ paths_fun <- function(data, index, formulas, models_args, treat, outcome, condit
       y_0_mk_1 <- predict(model_objects[[k]], newdata = data.frame(x_a1))
     }
     if(isBart[k]) {
-      mat_x_a1 <- model.matrix(formulas[[k]], x_a1)[,-1]
+      mat_x_a1 <- model.matrix(formulas[[k]], x_a1)[,colnames(model_objects[[k]]$varcount)]
       y_0_mk_1 <- predict(model_objects[[k]], newdata = mat_x_a1)[["prob.test.mean"]]
     }
 
