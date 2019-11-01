@@ -8,10 +8,14 @@ paths <- function(formulas = NULL,
                   treat = NULL,
                   outcome = NULL,
                   conditional = TRUE,
+<<<<<<< HEAD
                   ps = FALSE,
                   ps_formula = update(formulas[[1]], paste(treat, "~ . -", treat)),
                   ps_model = "glm",
                   ps_model_args = list(binomial(link = "logit")),
+=======
+                  w = NULL,
+>>>>>>> origin
                   conf.level = 0.95,
                   long = TRUE,
                   data = NULL,
@@ -331,8 +335,12 @@ model_fit <- function(data, formulas, models_args, isLm, isGlm, isBart) {
 }
 
 #### internal function to calculate the estimates
+<<<<<<< HEAD
 paths_fun <- function(data, index, formulas, models_args, treat, outcome, conditional, isLm, isGlm, isBart,
                       ps, ps_formula, ps_model_args, ps_isLm, ps_isGlm, ps_isBart) {
+=======
+paths_fun <- function(data, index, formulas, models_args, treat, outcome, conditional, isLm, isGlm, isBart, w = NULL) {
+>>>>>>> origin
 
   n_models <- length(formulas)
   K <- n_models - 1
