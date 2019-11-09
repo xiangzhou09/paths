@@ -230,14 +230,14 @@ model_yhat <- model_fit(data = data,
                         models_args = list(model_a_arg),
                         isLm = TRUE, isGlm = FALSE, isBart = FALSE)
 
-# EXPECT ERROR
+# EXPECT NO ERROR
 model_a_arg <- NULL
 model_yhat <- model_fit(data = data,
                         formulas = list(formula_a),
                         models_args = list(model_a_arg),
                         isLm = FALSE, isGlm = FALSE, isBart = TRUE)
 
-# EXPECT ERROR
+# EXPECT NO ERROR
 model_a_arg <- list(theta = 0)
 model_yhat <- model_fit(data = data,
                         formulas = list(formula_a),
@@ -279,8 +279,8 @@ paths_fun(data = tatar,
           isGlm = c(FALSE, FALSE, FALSE, FALSE),
           isBart = c(TRUE, TRUE, TRUE, TRUE),
           ps = TRUE,
-          ps_formula = formula_a,
-          ps_model_args = list(binomial(link = "logit")),
+          ps_formula = list(formula_a),
+          ps_model_args = list(list(binomial(link = "logit"))),
           ps_isLm = FALSE,
           ps_isGlm = TRUE,
           ps_isBart = FALSE)
@@ -308,7 +308,6 @@ boot_out <- boot::boot(data = tatar,
                        parallel = "multicore",
                        ncpus = 20)
 
-
 ## Model as in the paper << somehow still giving "invalid formula" error even though all the above is running smoothly
 path_out_annex <- paths(formulas = list(formula_y, formula_m3, formula_m2, formula_m1),
                         models = c("pbart", "pbart", "pbart", "pbart"),
@@ -320,7 +319,7 @@ path_out_annex <- paths(formulas = list(formula_y, formula_m3, formula_m2, formu
                         ps_formula = formula_a,
                         ps_model = "glm",
                         ps_model_args = list(family = binomial(link = "logit")),
-                        sims = 20,
+                        sims = 500,
                         treat = "violence",
                         outcome = "annex",
                         data = tatar,

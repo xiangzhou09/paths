@@ -8,26 +8,10 @@ paths <- function(formulas = NULL,
                   treat = NULL,
                   outcome = NULL,
                   conditional = TRUE,
-<<<<<<< HEAD
-=======
-<<<<<<< HEAD
-=======
-<<<<<<< HEAD
->>>>>>> origin
->>>>>>> 442dbf7b763fa508da65b3b2c91a138a4f49324e
                   ps = FALSE,
                   ps_formula = update(formulas[[1]], paste(treat, "~ . -", treat)),
                   ps_model = "glm",
                   ps_model_args = list(binomial(link = "logit")),
-<<<<<<< HEAD
-=======
-<<<<<<< HEAD
-=======
-=======
-                  w = NULL,
->>>>>>> origin
->>>>>>> origin
->>>>>>> 442dbf7b763fa508da65b3b2c91a138a4f49324e
                   conf.level = 0.95,
                   long = TRUE,
                   data = NULL,
@@ -226,8 +210,6 @@ paths <- function(formulas = NULL,
                          ps_isBart = ps_isBart,
                          ...)
 
-  print("done with bootstrap")
-
   ### Compute outputs and put them together ###
 
   ## Parameters for confidence interval
@@ -390,7 +372,6 @@ model_fit <- function(data, formulas, models_args, isLm, isGlm, isBart) {
   return(model_objects)
 }
 
-<<<<<<< HEAD
 paths_fun <- function(data, index = 1:nrow(data),
                       formulas, models_args,
                       treat, outcome,
@@ -398,20 +379,6 @@ paths_fun <- function(data, index = 1:nrow(data),
                       isLm, isGlm, isBart,
                       ps, ps_formula, ps_model_args,
                       ps_isLm, ps_isGlm, ps_isBart) {
-=======
-#### internal function to calculate the estimates
-<<<<<<< HEAD
-paths_fun <- function(data, index, formulas, models_args, treat, outcome, conditional, isLm, isGlm, isBart,
-                      ps, ps_formula, ps_model_args, ps_isLm, ps_isGlm, ps_isBart) {
-=======
-<<<<<<< HEAD
-paths_fun <- function(data, index, formulas, models_args, treat, outcome, conditional, isLm, isGlm, isBart,
-                      ps, ps_formula, ps_model_args, ps_isLm, ps_isGlm, ps_isBart) {
-=======
-paths_fun <- function(data, index, formulas, models_args, treat, outcome, conditional, isLm, isGlm, isBart, w = NULL) {
->>>>>>> origin
->>>>>>> origin
->>>>>>> 442dbf7b763fa508da65b3b2c91a138a4f49324e
 
   n_models <- length(formulas)
   K <- n_models - 1
@@ -426,7 +393,7 @@ paths_fun <- function(data, index, formulas, models_args, treat, outcome, condit
   if(ps) {
 
     # fit propensity score model and extract weights
-    ps_mod <- model_fit(x, list(ps_formula), list(ps_model_args), ps_isLm, ps_isGlm, ps_isBart)[[1]]
+    ps_mod <- model_fit(x, ps_formula, ps_model_args, ps_isLm, ps_isGlm, ps_isBart)[[1]]
 
     ps_score <- fitted(ps_mod)
 
