@@ -186,7 +186,7 @@ paths <- function(formulas = NULL,
   dat_boot <- na.omit(data[, c(outcome_var, treat_var, unlist(mediators_var), covariates_var)])
 
   ## Calculate models using original data
-  model_objects <- model_fit(dat_boot, formulas, models_args, isLm, isGlm, isBart)
+  model_objects <- model_fit(dat_boot, formulas, models, models_args, isLm, isGlm, isBart)
 
 
   ### Calculate point estimate and bootstrap for uncertainty estimate ###
@@ -195,6 +195,7 @@ paths <- function(formulas = NULL,
                          R = sims,
                          sim = "ordinary",
                          formulas = formulas,
+                         models = models,
                          models_args = models_args,
                          treat = treat_var,
                          outcome = outcome_var,
@@ -298,7 +299,7 @@ paths <- function(formulas = NULL,
 }
 
 #### internal function to refit the model given formulas
-model_fit <- function(data, formulas, models_args, isLm, isGlm, isBart) {
+model_fit <- function(data, formulas, models, models_args, isLm, isGlm, isBart) {
 
   ## Input check for when model_fit is called independently outside of paths
 
@@ -362,9 +363,16 @@ model_fit <- function(data, formulas, models_args, isLm, isGlm, isBart) {
                 models_args[[i]],
                 list(printevery = 2000))
 
-      ## TO-DO: Decide which bart function to use here!
+      if(models[i] == "wbart" | length(unique(y.train)) > 2) {
+        ## CAVEAT: All models with non-binary outcomes
+        ## are considered as continuous at the moment
+        model_objects[[i]] <- do.call(wbart, args)
+      } else if(models[i] == "pbart") {
+        model_objects[[i]] <- do.call(pbart, args)
+      } else if(models[i] == "lbart") {
+        model_objects[[i]] <- do.call(lbart, args)
+      }
 
-      model_objects[[i]] <- do.call(pbart, args)
     }
 
   }
@@ -373,11 +381,11 @@ model_fit <- function(data, formulas, models_args, isLm, isGlm, isBart) {
 }
 
 paths_fun <- function(data, index = 1:nrow(data),
-                      formulas, models_args,
+                      formulas, models, models_args,
                       treat, outcome,
                       conditional,
                       isLm, isGlm, isBart,
-                      ps, ps_formula, ps_model_args,
+                      ps, ps_formula, ps_model, ps_model_args,
                       ps_isLm, ps_isGlm, ps_isBart) {
 
   n_models <- length(formulas)
@@ -393,7 +401,7 @@ paths_fun <- function(data, index = 1:nrow(data),
   if(ps) {
 
     # fit propensity score model and extract weights
-    ps_mod <- model_fit(x, ps_formula, ps_model_args, ps_isLm, ps_isGlm, ps_isBart)[[1]]
+    ps_mod <- model_fit(x, ps_formula, ps_model, ps_model_args, ps_isLm, ps_isGlm, ps_isBart)[[1]]
 
     ps_score <- fitted(ps_mod)
 
@@ -411,7 +419,7 @@ paths_fun <- function(data, index = 1:nrow(data),
   ipw_a0 <- ipw[!a]
 
   ## Estimate components of causal paths
-  model_objects <- model_fit(x, formulas, models_args, isLm, isGlm, isBart)
+  model_objects <- model_fit(x, formulas, models, models_args, isLm, isGlm, isBart)
 
   # Total effect
   if(conditional) {
@@ -444,44 +452,115 @@ paths_fun <- function(data, index = 1:nrow(data),
   # Decomposition Type 1
   x_a0 <- x[!a,]
   x_a0[,treat] <- 1
+  n_a0 <- nrow(x_a0)
+
+  # E[Y(1, M_k(0))] are estimated differently depending on whether the
+  # setting is experimental (conditional = FALSE)
+  # or observational (conditional = TRUE), and then on whether
+  # the estimator is pure imputation (ps = FALSE) or imputation-
+  # based (ps = TRUE)
 
   E_y_1_mk_0 <- sapply(K:1, function(k) {
-    # predicting outcome conditioning on treatment, mediators M_k and X
-    if(isLm[k] | isGlm[k]) {
-      y_1_mk_0 <- predict(model_objects[[k]], newdata = x_a0)
+
+    ## Impute counterfactual outcome for Y(1, M_k(0))
+    if(isLm[k]) {
+
+      # for parametric models, imputed outcome must be drawn from sampling distribution
+
+      mu_y_1_mk_0 <- predict(model_objects[[k]], newdata = x_a0)
+
+      sigma <- sqrt(summary(model_objects[[k]])$dispersion)
+      error <- rnorm(n_a0, mean = 0, sd = sigma)
+      y_1_mk_0 <- mu_y_1_mk_0 + error
+
+
+    } else if(isGlm[k]) {
+
+      # for parametric models, imputed outcome must be drawn from sampling distribution
+
+      mu_y_1_mk_0 <- predict(model_objects[[k]], newdata = x_a0)
+
+      if(family[k] == "poisson"){
+        y_1_mk_0 <- rpois(n_a0, lambda = mu_y_1_mk_0)
+      } else if (family[k] == "Gamma") {
+        shape <- gamma.shape(model_objects[[k]])$alpha
+        y_1_mk_0 <- rgamma(n_a0, shape = shape, scale = mu_y_1_mk_0/shape)
+      } else if (family[k] == "binomial"){
+        y_1_mk_0 <- rbinom(n_a0, size = 1, prob = mu_y_1_mk_0)
+      } else if (family[k] == "gaussian"){
+        sigma <- sqrt(summary(model_objects[[k]])$dispersion)
+        error <- rnorm(n_a0, mean = 0, sd = sigma)
+        y_1_mk_0 <- mu_y_1_mk_0 + error
+      } else if (family[k] == "inverse.gaussian"){
+        disp <- summary(model_objects[[k]])$dispersion
+        y_1_mk_0 <- SuppDists::rinvGauss(n_a0, nu = mu_y_1_mk_0, lambda = 1/disp)
+      } else {
+        stop(paste("Model ", k," belongs to an unsupported glm family"))
+      }
+
     } else if(isBart[k]) {
+
+      # for non-parametric models, imputed outcome can be drawn from sampling distribution
       mat_x_a0 <- model.matrix(formulas[[k]], x_a0)[,colnames(model_objects[[k]]$varcount)]
-      y_1_mk_0 <- predict(model_objects[[k]], newdata = mat_x_a0)[["prob.test.mean"]]
+
+      if (inherits(model_objects[[k]], c("pbart", "lbart"))){
+        mu_y_1_mk_0 <- predict(model_objects[[k]], newdata = mat_x_a0)[["prob.test.mean"]]
+        y_1_mk_0 <- rbinom(n_a0, size = 1, prob = mu_y_1_mk_0)
+      } else if (inherits(model_objects[[k]], "wbart")){
+        mu_y_1_mk_0 <- predict(model_objects[[k]], newdata = mat_x_a0)[["yhat.test.mean"]]
+        sigma <- mean(model_objects[[k]]$sigma)
+        error <- rnorm(n_a0, mean = 0, sd = sigma)
+        y_1_mk_0 <- mu_y_1_mk_0 + error
+      }
     }
 
-    if(conditional) {
-      # for observational studies, E[y_1_mk_0] must be estimated
-      # using a model conditional on X with model specifications
-      # following Y ~ A + X model
+    if(conditional & !ps) {
+      ## When conditional = TRUE, and ps = FALSE,
+      ## E[Y(1, M_k(0))] is calculated using
+      ## average of predicted counterfactual from
+      ## a model Y ~ X that follows the specification
+      ## of the model Y ~ A + X (k = K)
 
       x_a0[[outcome]] <- y_1_mk_0
       formula_yhat <- update(formulas[[n_models]], paste(". ~ . -", treat))
 
       model_yhat <- model_fit(x_a0,
                               list(formula_yhat),
+                              models[n_models],
                               list(models_args[[n_models]]),
                               isLm[n_models],
                               isGlm[n_models],
                               isBart[n_models])[[1]]
 
       if(isLm[n_models] | isGlm[n_models]) {
+
         y_1_mk_0 <- predict(model_yhat, newdata = x)
+
       } else if(isBart[n_models]) {
+
         mat_x <- model.matrix(formula_yhat, x)[,colnames(model_yhat$varcount)]
-        y_1_mk_0 <- predict(model_yhat, newdata = mat_x)[["prob.test.mean"]]
+        if(inherits(model_yhat, c("pbart", "lbart"))) {
+          y_1_mk_0 <- predict(model_yhat, newdata = mat_x)[["prob.test.mean"]]
+        } else if(inherits(model_yhat, "wbart"))  {
+          y_1_mk_0 <- predict(model_yhat, newdata = mat_x, dodraws = FALSE)
+        }
+
       }
 
       mean(y_1_mk_0)
 
     } else {
 
-      # for experiments, E[y_1_mk_0] can be calculated unconditionally
+      ## When conditional = TRUE, and ps = TRUE,
+      ## E[Y(1, M_k(0))] is calculated using
+      ## weighted average of imputed counterfactual
+
+      ## When conditional = FALSE,
+      ## E[Y(1, M_k(0))] is calculated using
+      ## simple average of imputed counterfactual
+
       weighted.mean(y_1_mk_0, w = ipw_a0)
+
     }
   })
 

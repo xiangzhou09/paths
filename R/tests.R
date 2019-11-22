@@ -263,18 +263,19 @@ load("annex_bart_mod.RData")
 
 
 ## Testing path_fun
-index <- sample(nrow(tatar), replace = TRUE)
-index
+#index <- sample(nrow(tatar), replace = TRUE)
+index <- 1:nrow(tatar)
 paths_fun(data = tatar,
           index = index,
           formulas = list(formula_y, formula_m3, formula_m2, formula_m1),
+          models = c("pbart", "pbart", "pbart", "pbart"),
           models_args = list(NULL,
                              NULL,
                              NULL,
                              NULL),
           treat = "violence",
           outcome = "annex",
-          conditional = TRUE,
+          conditional = FALSE,
           isLm = c(FALSE, FALSE, FALSE, FALSE),
           isGlm = c(FALSE, FALSE, FALSE, FALSE),
           isBart = c(TRUE, TRUE, TRUE, TRUE),
@@ -285,6 +286,23 @@ paths_fun(data = tatar,
           ps_isGlm = TRUE,
           ps_isBart = FALSE)
 
+paths_fun(data = tatar,
+          index = index,
+          formulas = list(formula_y, formula_m3, formula_m2, formula_m1),
+          models = c("pbart", "pbart", "pbart", "pbart"),
+          models_args = list(NULL,
+                             NULL,
+                             NULL,
+                             NULL),
+          treat = "violence",
+          outcome = "annex",
+          conditional = TRUE,
+          isLm = c(FALSE, FALSE, FALSE, FALSE),
+          isGlm = c(FALSE, FALSE, FALSE, FALSE),
+          isBart = c(TRUE, TRUE, TRUE, TRUE),
+          ps = FALSE)
+
+
 ## Testing boot
 
 boot_out <- boot::boot(data = tatar,
@@ -292,6 +310,7 @@ boot_out <- boot::boot(data = tatar,
                        R = sims,
                        sim = "ordinary",
                        formulas = formulas,
+                       models = models,
                        models_args = models_args,
                        treat = treat,
                        outcome = outcome,
@@ -315,18 +334,20 @@ path_out_annex <- paths(formulas = list(formula_y, formula_m3, formula_m2, formu
                                            NULL,
                                            NULL,
                                            NULL),
-                        ps = TRUE,
-                        ps_formula = formula_a,
-                        ps_model = "glm",
-                        ps_model_args = list(family = binomial(link = "logit")),
+                        conditional = TRUE,
+                        ps = FALSE,
+                        #ps_formula = formula_a,
+                        #ps_model = "glm",
+                        #ps_model_args = list(family = binomial(link = "logit")),
                         sims = 500,
                         treat = "violence",
                         outcome = "annex",
                         data = tatar,
                         parallel = "multicore",
-                        ncpus = 20)
+                        ncpus = 25)
 
 summary(path_out_annex)
 
 tatar_decomp
 tatar_decomp_pi
+tatar_decomp2_pi
