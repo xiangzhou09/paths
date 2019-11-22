@@ -43,7 +43,7 @@ formula_a <- as.formula(paste(a, " ~ ", paste(c(x, m1, m2), collapse = "+")))
 model_a <- "glm"
 model_a_arg <- list(family = binomial(link = "logit"))
 
-model_fit(peace, list(formula_a), list(model_a_arg), isLm = FALSE, isGlm = TRUE, isBart = FALSE)
+model_fit(peace, list(formula_a), list(model_a), list(model_a_arg))
 
 load("peace_bart_full.RData")
 
@@ -63,21 +63,17 @@ peace_decomp <- data.frame(out) %>%
 paths_fun(data = peace,
          index = 1:nrow(peace),
          formulas = list(formula_y, formula_m2, formula_m1),
+         models = c("pbart", "pbart", "pbart"),
          models_args = list(NULL,
                             NULL,
                             NULL),
          treat = "democ",
          outcome = "strikeo",
          conditional = FALSE,
-         isLm = c(TRUE, TRUE, TRUE),
-         isGlm = c(FALSE, FALSE, FALSE),
-         isBart = c(FALSE, FALSE, FALSE),
          ps = TRUE,
          ps_formula = list(formula_a),
-         ps_model_args = list(list(binomial(link = "logit"))),
-         ps_isLm = FALSE,
-         ps_isGlm = TRUE,
-         ps_isBart = FALSE)
+         ps_model = "glm",
+         ps_model_args = list(list(binomial(link = "logit"))))
 
 ## Using formula
 path_out <- paths(formulas = list(formula_y, formula_m2),
@@ -125,6 +121,18 @@ path_out <- paths(formulas = list(formula_y, formula_m2, formula_m1),
                   ps_model_args = list(NULL))
 
 # Model as in the paper
+path_fun_out_peace <- paths_fun(data = peace,
+                                index = 1:nrow(peace),
+                                formulas = list(formula_y, formula_m2, formula_m1),
+                                models = c("pbart", "pbart", "pbart"),
+                                models_args = list(NULL,
+                                                   NULL,
+                                                   NULL),
+                                conditional = FALSE,
+                                treat = "democ",
+                                outcome = "strikeo",
+                                ps = FALSE)
+
 path_out_peace <- paths(formulas = list(formula_y, formula_m2, formula_m1),
                   models = c("pbart", "pbart", "pbart"),
                   models_args = list(NULL,
@@ -136,10 +144,11 @@ path_out_peace <- paths(formulas = list(formula_y, formula_m2, formula_m1),
                   outcome = "strikeo",
                   data = peace,
                   parallel = "multicore",
-                  ncpus = 20)
+                  ncpus = 25)
 
 summary(path_out_peace)
 peace_decomp
+peace_decomp2
 
 plot(path_out_peace)
 plot(path_out_peace, c("Morality", "Cost-Benefit Analysis"))
@@ -220,43 +229,43 @@ data <- tatar[which(tatar$violence == 0),]
 model_a_arg <- list(NULL)
 model_yhat <- model_fit(data = data,
                         formulas = list(formula_a),
-                        models_args = list(model_a_arg),
-                        isLm = FALSE, isGlm = FALSE, isBart = TRUE)
+                        models = "pbart",
+                        models_args = list(model_a_arg))
 
 # EXPECT ERROR (REDUNDANT BUT JUST IN CASE)
 model_a_arg <- list(NULL)
 model_yhat <- model_fit(data = data,
                         formulas = list(formula_a),
-                        models_args = list(model_a_arg),
-                        isLm = TRUE, isGlm = FALSE, isBart = FALSE)
+                        models = "lm",
+                        models_args = list(model_a_arg))
 
 # EXPECT NO ERROR
 model_a_arg <- NULL
 model_yhat <- model_fit(data = data,
                         formulas = list(formula_a),
-                        models_args = list(model_a_arg),
-                        isLm = FALSE, isGlm = FALSE, isBart = TRUE)
+                        models = "pbart",
+                        models_args = list(model_a_arg))
 
 # EXPECT NO ERROR
 model_a_arg <- list(theta = 0)
 model_yhat <- model_fit(data = data,
                         formulas = list(formula_a),
-                        models_args = list(model_a_arg),
-                        isLm = FALSE, isGlm = FALSE, isBart = TRUE)
+                        models = "pbart",
+                        models_args = list(model_a_arg))
 
 # EXPECT ERROR
 model_a_arg <- list(theta = 0, omega = 1)
 model_yhat <- model_fit(data = data,
                         formulas = list(formula_a),
-                        models_args = model_a_arg,
-                        isLm = FALSE, isGlm = FALSE, isBart = TRUE)
+                        models = "pbart",
+                        models_args = model_a_arg)
 
 # EXPECT ERROR
 model_a_arg <- list(sparse = FALSE, omega = 1)
 model_yhat <- model_fit(data = data,
                         formulas = list(formula_a),
-                        models_args = model_a_arg,
-                        isLm = FALSE, isGlm = FALSE, isBart = TRUE)
+                        models = "pbart",
+                        models_args = model_a_arg)
 
 # load output data
 load("annex_bart_mod.RData")
@@ -276,15 +285,10 @@ paths_fun(data = tatar,
           treat = "violence",
           outcome = "annex",
           conditional = FALSE,
-          isLm = c(FALSE, FALSE, FALSE, FALSE),
-          isGlm = c(FALSE, FALSE, FALSE, FALSE),
-          isBart = c(TRUE, TRUE, TRUE, TRUE),
           ps = TRUE,
           ps_formula = list(formula_a),
-          ps_model_args = list(list(binomial(link = "logit"))),
-          ps_isLm = FALSE,
-          ps_isGlm = TRUE,
-          ps_isBart = FALSE)
+          ps_model = "glm",
+          ps_model_args = list(list(binomial(link = "logit"))))
 
 paths_fun(data = tatar,
           index = index,
@@ -297,9 +301,6 @@ paths_fun(data = tatar,
           treat = "violence",
           outcome = "annex",
           conditional = TRUE,
-          isLm = c(FALSE, FALSE, FALSE, FALSE),
-          isGlm = c(FALSE, FALSE, FALSE, FALSE),
-          isBart = c(TRUE, TRUE, TRUE, TRUE),
           ps = FALSE)
 
 
@@ -307,23 +308,21 @@ paths_fun(data = tatar,
 
 boot_out <- boot::boot(data = tatar,
                        statistic = paths_fun,
-                       R = sims,
+                       R = 20,
                        sim = "ordinary",
-                       formulas = formulas,
-                       models = models,
-                       models_args = models_args,
-                       treat = treat,
-                       outcome = outcome,
-                       isLm = isLm,
-                       isGlm = isGlm,
-                       isBart = isBart,
-                       conditional = conditional,
-                       ps = ps,
-                       ps_formula = ps_formula,
-                       ps_model_args = ps_model_args,
-                       ps_isLm = ps_isLm,
-                       ps_isGlm = ps_isGlm,
-                       ps_isBart = ps_isBart,
+                       formulas = list(formula_y, formula_m3, formula_m2, formula_m1),
+                       models = c("pbart", "lbart", "lm", "glm"),
+                       models_args = list(NULL,
+                                          NULL,
+                                          NULL,
+                                          list(binomial(link = "logit"))),
+                       treat = "violence",
+                       outcome = "annex",
+                       conditional = TRUE,
+                       ps = TRUE,
+                       ps_formula = list(formula_a),
+                       ps_model = "glm",
+                       ps_model_args = list(list(binomial(link = "logit"))),
                        parallel = "multicore",
                        ncpus = 20)
 

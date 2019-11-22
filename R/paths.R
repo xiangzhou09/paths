@@ -21,13 +21,6 @@ paths <- function(formulas = NULL,
 
   cl <- match.call()
 
-  lm_names <- "lm"
-  glm_names <- "glm"
-  bart_names <- c("abart", "gbart", "lbart",
-                  "pbart", "mbart", "mbart2",
-                  "recurbart", "survbart",
-                  "wbart")
-
   ### Extract information from input data ###
 
   ## Check if formulas are provided
@@ -46,6 +39,7 @@ paths <- function(formulas = NULL,
   if(is.null(models)){
     warning("Argument 'models' is not supplied alongside 'formulas', using 'lm' as default")
     models <- rep("lm", length(formulas))
+    models_args <- NULL
 
   } else {
 
@@ -76,11 +70,6 @@ paths <- function(formulas = NULL,
     }
   }
 
-
-  ## Check model types
-  isLm <- models %in% lm_names
-  isGlm <- models %in% glm_names
-  isBart <- models %in% bart_names
 
   ## If propensity score model is provided, check if model specification is correct
   if(is.null(ps)) {
@@ -140,10 +129,6 @@ paths <- function(formulas = NULL,
       }
     }
 
-    # Check model type for propensity score model
-    ps_isLm <- ps_model %in% lm_names
-    ps_isGlm <- ps_model %in% glm_names
-    ps_isBart <- ps_model %in% bart_names
   }
 
 
@@ -186,7 +171,7 @@ paths <- function(formulas = NULL,
   dat_boot <- na.omit(data[, c(outcome_var, treat_var, unlist(mediators_var), covariates_var)])
 
   ## Calculate models using original data
-  model_objects <- model_fit(dat_boot, formulas, models, models_args, isLm, isGlm, isBart)
+  model_objects <- model_fit(dat_boot, formulas, models, models_args)
 
 
   ### Calculate point estimate and bootstrap for uncertainty estimate ###
@@ -199,16 +184,11 @@ paths <- function(formulas = NULL,
                          models_args = models_args,
                          treat = treat_var,
                          outcome = outcome_var,
-                         isLm = isLm,
-                         isGlm = isGlm,
-                         isBart = isBart,
                          conditional = conditional,
                          ps = ps,
+                         ps_model = ps_model,
                          ps_formula = ps_formula,
                          ps_model_args = ps_model_args,
-                         ps_isLm = ps_isLm,
-                         ps_isGlm = ps_isGlm,
-                         ps_isBart = ps_isBart,
                          ...)
 
   ### Compute outputs and put them together ###
@@ -218,12 +198,6 @@ paths <- function(formulas = NULL,
   high <- 1 - low
 
   ## Extract bootstrap output
-  # Original point estimate applied to original data
-  eff_te <- boot_out$t0[1]
-  eff_a_y_t1 <- boot_out$t0[2]
-  eff_a_y_t2 <- boot_out$t0[3]
-  eff_a_mk_y_t1 <- boot_out$t0[4:(K+3)]
-  eff_a_mk_y_t2 <- boot_out$t0[(K+4):length(boot_out$t0)]
 
   # Bootstrap replicates
   eff_te_sim <- boot_out$t[, 1, drop = FALSE]
@@ -231,6 +205,21 @@ paths <- function(formulas = NULL,
   eff_a_y_t2_sim <- boot_out$t[, 3, drop = FALSE]
   eff_a_mk_y_t1_sim <- boot_out$t[, 4:(K+3), drop = FALSE]
   eff_a_mk_y_t2_sim <- boot_out$t[, (K+4):ncol(boot_out$t), drop = FALSE]
+
+  # Original point estimate applied to original data
+  # eff_te <- boot_out$t0[1]
+  # eff_a_y_t1 <- boot_out$t0[2]
+  # eff_a_y_t2 <- boot_out$t0[3]
+  # eff_a_mk_y_t1 <- boot_out$t0[4:(K+3)]
+  # eff_a_mk_y_t2 <- boot_out$t0[(K+4):length(boot_out$t0)]
+
+  # Point estimate using bootstrap mean
+  eff_ests <- apply(boot_out$t, 2, mean, na.rm = TRUE)
+  eff_te <- eff_ests[1]
+  eff_a_y_t1 <- eff_ests[2]
+  eff_a_y_t2 <- eff_ests[3]
+  eff_a_mk_y_t1 <- eff_ests[4:(K+3)]
+  eff_a_mk_y_t2 <- eff_ests[(K+4):ncol(boot_out$t)]
 
   # Bootstrap CIs
   eff_CIs <- apply(boot_out$t, 2, function(b) quantile(b, c(low, high), na.rm = TRUE))
@@ -285,7 +274,10 @@ paths <- function(formulas = NULL,
               models_args = models_args,
               model_objects = model_objects,
               data = data,
-              ps = ps)
+              ps = ps,
+              ps_formula = ps_formula,
+              ps_model = ps_model,
+              ps_model_args = ps_model_args)
 
   if(long == TRUE){
     out[["boot_out"]] = data.frame(eff_te_sim = eff_te_sim,
@@ -298,8 +290,31 @@ paths <- function(formulas = NULL,
   return(out)
 }
 
+#### internal function to determine model type
+model_type <- function(model) {
+
+  lm_names <- "lm"
+  glm_names <- "glm"
+  bart_names <- c("abart", "gbart", "lbart",
+                  "pbart", "mbart", "mbart2",
+                  "recurbart", "survbart",
+                  "wbart")
+
+  type <- character(length = length(model))
+  type[model %in% lm_names] <- "lm"
+  type[model %in% glm_names] <- "glm"
+  type[model %in% bart_names] <- "BART"
+
+  if(!all(type %in% c("lm", "glm", "BART"))) {
+    stop("One or more model has undeterminable names.")
+  }
+
+  return(type)
+
+}
+
 #### internal function to refit the model given formulas
-model_fit <- function(data, formulas, models, models_args, isLm, isGlm, isBart) {
+model_fit <- function(data, formulas, models, models_args) {
 
   ## Input check for when model_fit is called independently outside of paths
 
@@ -312,6 +327,17 @@ model_fit <- function(data, formulas, models, models_args, isLm, isGlm, isBart) 
   K <- n_models - 1
 
   n_models <- length(formulas)
+
+  # Check if model types are provided correctly
+  if(is.null(models)) {
+    stop("'models' must be supplied as a vector or a list of model types")
+  } else if(inherits(models, "list")) {
+    models <- unlist(models)
+
+    if(length(models) != n_models) {
+      stop("Arguments 'formulas' and 'models' must be of equal lengths")
+    }
+  }
 
   # Check if model argument(s) are provided correctly
   if(is.null(models_args)){
@@ -328,7 +354,7 @@ model_fit <- function(data, formulas, models, models_args, isLm, isGlm, isBart) 
     }
 
     if(length(models_args) != n_models) {
-      stop("Arguments 'formulas' and 'models_args' must be of equal length")
+      stop("Arguments 'formulas' and 'models_args' must be of equal lengths")
     }
   }
 
@@ -338,21 +364,21 @@ model_fit <- function(data, formulas, models, models_args, isLm, isGlm, isBart) 
 
   for(i in 1:n_models) {
     # Fit one model object for each formula
-    if(isLm[i]) {
+    if(model_type(models[i]) == "lm") {
       args <- c(list(formula = formulas[[i]],
                      data = data),
                 models_args[[i]])
 
       model_objects[[i]] <- do.call(lm, args)
 
-    } else if(isGlm[i]) {
+    } else if(model_type(models[i]) == "glm") {
       args <- c(list(formula = formulas[[i]],
                      data = data),
                 models_args[[i]])
 
       model_objects[[i]] <- do.call(glm, args)
 
-    } else if(isBart[i]) {
+    } else if(model_type(models[i]) == "BART") {
       # bart does not automatically convert flexibly named
       # variables in formulas e.g. log(X)
       x.train <- model.matrix(formulas[[i]], data)[,-1]
@@ -363,9 +389,7 @@ model_fit <- function(data, formulas, models, models_args, isLm, isGlm, isBart) 
                 models_args[[i]],
                 list(printevery = 2000))
 
-      if(models[i] == "wbart" | length(unique(y.train)) > 2) {
-        ## CAVEAT: All models with non-binary outcomes
-        ## are considered as continuous at the moment
+      if(models[i] == "wbart") {
         model_objects[[i]] <- do.call(wbart, args)
       } else if(models[i] == "pbart") {
         model_objects[[i]] <- do.call(pbart, args)
@@ -384,9 +408,8 @@ paths_fun <- function(data, index = 1:nrow(data),
                       formulas, models, models_args,
                       treat, outcome,
                       conditional,
-                      isLm, isGlm, isBart,
-                      ps, ps_formula, ps_model, ps_model_args,
-                      ps_isLm, ps_isGlm, ps_isBart) {
+                      ps,
+                      ps_formula, ps_model, ps_model_args) {
 
   n_models <- length(formulas)
   K <- n_models - 1
@@ -401,7 +424,7 @@ paths_fun <- function(data, index = 1:nrow(data),
   if(ps) {
 
     # fit propensity score model and extract weights
-    ps_mod <- model_fit(x, ps_formula, ps_model, ps_model_args, ps_isLm, ps_isGlm, ps_isBart)[[1]]
+    ps_mod <- model_fit(x, ps_formula, ps_model, ps_model_args)[[1]]
 
     ps_score <- fitted(ps_mod)
 
@@ -419,7 +442,7 @@ paths_fun <- function(data, index = 1:nrow(data),
   ipw_a0 <- ipw[!a]
 
   ## Estimate components of causal paths
-  model_objects <- model_fit(x, formulas, models, models_args, isLm, isGlm, isBart)
+  model_objects <- model_fit(x, formulas, models, models_args)
 
   # Total effect
   if(conditional) {
@@ -427,13 +450,13 @@ paths_fun <- function(data, index = 1:nrow(data),
     # conditional on X
     x_te <- x
 
-    if(isLm[n_models] | isGlm[n_models]){
+    if(model_type(models[n_models]) %in% c("lm", "glm")) {
       x_te[,treat] <- 1
       E_a1 <- mean(predict(model_objects[[n_models]], newdata = data.frame(x_te)))
 
       x_te[,treat] <- 0
       E_a0 <- mean(predict(model_objects[[n_models]], newdata = data.frame(x_te)))
-    } else if(isBart[n_models]) {
+    } else if(model_type(models[n_models]) == "BART") {
       x_te[,treat] <- 1
       mat_x_te <- model.matrix(formulas[[n_models]], x_te)[,colnames(model_objects[[n_models]]$varcount)]
       E_a1 <- mean(predict(model_objects[[n_models]], newdata = mat_x_te)[["prob.test.mean"]])
@@ -463,51 +486,46 @@ paths_fun <- function(data, index = 1:nrow(data),
   E_y_1_mk_0 <- sapply(K:1, function(k) {
 
     ## Impute counterfactual outcome for Y(1, M_k(0))
-    if(isLm[k]) {
-
-      # for parametric models, imputed outcome must be drawn from sampling distribution
+    if(model_type(models[k]) == "lm") {
 
       mu_y_1_mk_0 <- predict(model_objects[[k]], newdata = x_a0)
 
-      sigma <- sqrt(summary(model_objects[[k]])$dispersion)
+      sigma <- sqrt(summary(model_objects[[k]])$sigma)
       error <- rnorm(n_a0, mean = 0, sd = sigma)
       y_1_mk_0 <- mu_y_1_mk_0 + error
 
 
-    } else if(isGlm[k]) {
-
-      # for parametric models, imputed outcome must be drawn from sampling distribution
+    } else if(model_type(models[k]) == "glm") {
 
       mu_y_1_mk_0 <- predict(model_objects[[k]], newdata = x_a0)
 
-      if(family[k] == "poisson"){
+      if(family(model_objects[[k]]) == "poisson"){
         y_1_mk_0 <- rpois(n_a0, lambda = mu_y_1_mk_0)
-      } else if (family[k] == "Gamma") {
+      } else if (family(model_objects[[k]]) == "Gamma") {
         shape <- gamma.shape(model_objects[[k]])$alpha
         y_1_mk_0 <- rgamma(n_a0, shape = shape, scale = mu_y_1_mk_0/shape)
-      } else if (family[k] == "binomial"){
+      } else if (family(model_objects[[k]]) == "binomial"){
         y_1_mk_0 <- rbinom(n_a0, size = 1, prob = mu_y_1_mk_0)
-      } else if (family[k] == "gaussian"){
+      } else if (family(model_objects[[k]]) == "gaussian"){
         sigma <- sqrt(summary(model_objects[[k]])$dispersion)
         error <- rnorm(n_a0, mean = 0, sd = sigma)
         y_1_mk_0 <- mu_y_1_mk_0 + error
-      } else if (family[k] == "inverse.gaussian"){
+      } else if (family(model_objects[[k]]) == "inverse.gaussian"){
         disp <- summary(model_objects[[k]])$dispersion
         y_1_mk_0 <- SuppDists::rinvGauss(n_a0, nu = mu_y_1_mk_0, lambda = 1/disp)
       } else {
         stop(paste("Model ", k," belongs to an unsupported glm family"))
       }
 
-    } else if(isBart[k]) {
+    } else if(model_type(models[k]) == "BART") {
 
-      # for non-parametric models, imputed outcome can be drawn from sampling distribution
       mat_x_a0 <- model.matrix(formulas[[k]], x_a0)[,colnames(model_objects[[k]]$varcount)]
 
-      if (inherits(model_objects[[k]], c("pbart", "lbart"))){
+      if (inherits(model_objects[[k]], c("pbart", "lbart"))) {
         mu_y_1_mk_0 <- predict(model_objects[[k]], newdata = mat_x_a0)[["prob.test.mean"]]
         y_1_mk_0 <- rbinom(n_a0, size = 1, prob = mu_y_1_mk_0)
-      } else if (inherits(model_objects[[k]], "wbart")){
-        mu_y_1_mk_0 <- predict(model_objects[[k]], newdata = mat_x_a0)[["yhat.test.mean"]]
+      } else if(inherits(model_objects[[k]], "wbart")) {
+        mu_y_1_mk_0 <- predict(model_objects[[k]], newdata = mat_x_a0, dodraws = FALSE)
         sigma <- mean(model_objects[[k]]$sigma)
         error <- rnorm(n_a0, mean = 0, sd = sigma)
         y_1_mk_0 <- mu_y_1_mk_0 + error
@@ -527,16 +545,13 @@ paths_fun <- function(data, index = 1:nrow(data),
       model_yhat <- model_fit(x_a0,
                               list(formula_yhat),
                               models[n_models],
-                              list(models_args[[n_models]]),
-                              isLm[n_models],
-                              isGlm[n_models],
-                              isBart[n_models])[[1]]
+                              list(models_args[[n_models]]))[[1]]
 
-      if(isLm[n_models] | isGlm[n_models]) {
+      if(model_type(models[n_models]) %in% c("lm", "glm")) {
 
         y_1_mk_0 <- predict(model_yhat, newdata = x)
 
-      } else if(isBart[n_models]) {
+      } else if(model_type(models[n_models]) == "BART") {
 
         mat_x <- model.matrix(formula_yhat, x)[,colnames(model_yhat$varcount)]
         if(inherits(model_yhat, c("pbart", "lbart"))) {
@@ -559,7 +574,7 @@ paths_fun <- function(data, index = 1:nrow(data),
       ## E[Y(1, M_k(0))] is calculated using
       ## simple average of imputed counterfactual
 
-      weighted.mean(y_1_mk_0, w = ipw_a0)
+      weighted.mean(y_1_mk_0, w = ipw_a0) # equal to simple average when ipw_a0 is constant
 
     }
   })
@@ -567,18 +582,108 @@ paths_fun <- function(data, index = 1:nrow(data),
   # Decomposition Type 2
   x_a1 <- x[a,]
   x_a1[,treat] <- 0
+  n_a1 <- nrow(x_a1)
+
+  # E[Y(0, M_k(1))] are estimated differently depending on whether the
+  # setting is experimental (conditional = FALSE)
+  # or observational (conditional = TRUE), and then on whether
+  # the estimator is pure imputation (ps = FALSE) or imputation-
+  # based (ps = TRUE)
 
   E_y_0_mk_1 <- sapply(K:1, function(k) {
-    # predicting outcome conditioning on treatment, mediators M_k and X
-    if(isLm[k] | isGlm[k]) {
-      y_0_mk_1 <- predict(model_objects[[k]], newdata = data.frame(x_a1))
-    }
-    if(isBart[k]) {
+
+    ## Impute counterfactual outcome for Y(1, M_k(0))
+    if(model_type(models[k]) == "lm") {
+
+      mu_y_0_mk_1 <- predict(model_objects[[k]], newdata = x_a1)
+
+      sigma <- sqrt(summary(model_objects[[k]])$sigma)
+      error <- rnorm(n_a1, mean = 0, sd = sigma)
+      y_0_mk_1 <- mu_y_0_mk_1 + error
+
+
+    } else if(model_type(models[k]) == "glm") {
+
+      mu_y_0_mk_1 <- predict(model_objects[[k]], newdata = x_a1)
+
+      if(family(model_objects[[k]]) == "poisson"){
+        y_0_mk_1 <- rpois(n_a1, lambda = mu_y_0_mk_1)
+      } else if (family(model_objects[[k]]) == "Gamma") {
+        shape <- gamma.shape(model_objects[[k]])$alpha
+        y_0_mk_1 <- rgamma(n_a1, shape = shape, scale = mu_y_0_mk_1/shape)
+      } else if (family(model_objects[[k]]) == "binomial"){
+        y_0_mk_1 <- rbinom(n_a1, size = 1, prob = mu_y_0_mk_1)
+      } else if (family(model_objects[[k]]) == "gaussian"){
+        sigma <- sqrt(summary(model_objects[[k]])$dispersion)
+        error <- rnorm(n_a1, mean = 0, sd = sigma)
+        y_0_mk_1 <- mu_y_0_mk_1 + error
+      } else if (family(model_objects[[k]]) == "inverse.gaussian"){
+        disp <- summary(model_objects[[k]])$dispersion
+        y_0_mk_1 <- SuppDists::rinvGauss(n_a1, nu = mu_y_0_mk_1, lambda = 1/disp)
+      } else {
+        stop(paste("Model ", k," belongs to an unsupported glm family"))
+      }
+
+    } else if(model_type(models[k]) == "BART") {
+
       mat_x_a1 <- model.matrix(formulas[[k]], x_a1)[,colnames(model_objects[[k]]$varcount)]
-      y_0_mk_1 <- predict(model_objects[[k]], newdata = mat_x_a1)[["prob.test.mean"]]
+
+      if (inherits(model_objects[[k]], c("pbart", "lbart"))) {
+        mu_y_0_mk_1 <- predict(model_objects[[k]], newdata = mat_x_a1)[["prob.test.mean"]]
+        y_0_mk_1 <- rbinom(n_a1, size = 1, prob = mu_y_0_mk_1)
+      } else if(inherits(model_objects[[k]], "wbart")) {
+        mu_y_0_mk_1 <- predict(model_objects[[k]], newdata = mat_x_a1, dodraws = FALSE)
+        sigma <- mean(model_objects[[k]]$sigma)
+        error <- rnorm(n_a1, mean = 0, sd = sigma)
+        y_0_mk_1 <- mu_y_0_mk_1 + error
+      }
     }
 
-    weighted.mean(y_0_mk_1, w = ipw_a1)
+    if(conditional & !ps) {
+      ## When conditional = TRUE, and ps = FALSE,
+      ## E[Y(0, M_k(1))] is calculated using
+      ## average of predicted counterfactual from
+      ## a model Y ~ X that follows the specification
+      ## of the model Y ~ A + X (k = K)
+
+      x_a1[[outcome]] <- y_0_mk_1
+      formula_yhat <- update(formulas[[n_models]], paste(". ~ . -", treat))
+
+      model_yhat <- model_fit(x_a1,
+                              list(formula_yhat),
+                              models[n_models],
+                              list(models_args[[n_models]]))[[1]]
+
+      if(model_type(models[n_models]) %in% c("lm", "glm")) {
+
+        y_0_mk_1 <- predict(model_yhat, newdata = x)
+
+      } else if(model_type(models[n_models]) == "BART") {
+
+        mat_x <- model.matrix(formula_yhat, x)[,colnames(model_yhat$varcount)]
+        if(inherits(model_yhat, c("pbart", "lbart"))) {
+          y_0_mk_1 <- predict(model_yhat, newdata = mat_x)[["prob.test.mean"]]
+        } else if(inherits(model_yhat, "wbart"))  {
+          y_0_mk_1 <- predict(model_yhat, newdata = mat_x, dodraws = FALSE)
+        }
+
+      }
+
+      mean(y_0_mk_1)
+
+    } else {
+
+      ## When conditional = TRUE, and ps = TRUE,
+      ## E[Y(0, M_k(1))] is calculated using
+      ## weighted average of imputed counterfactual
+
+      ## When conditional = FALSE,
+      ## E[Y(0, M_k(1))] is calculated using
+      ## simple average of imputed counterfactual
+
+      weighted.mean(y_0_mk_1, w = ipw_a1) # equal to simple average when ipw_a0 is constant
+
+    }
   })
 
   # construct path-specific effects
