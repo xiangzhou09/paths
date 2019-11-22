@@ -25,7 +25,6 @@ vignettes/*.pdf
 # Shiny token, see https://shiny.rstudio.com/articles/shinyapps.html
 rsconnect/
 .Rproj.user
-peace_bart_full.RData
-chechens_bart_full.RData
-3. Lupu_Peisakhin_Crimea_data.dta
-annex_bart_mod.RData
+# Example R codes and RData files
+data/
+R/0*.R
