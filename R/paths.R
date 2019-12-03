@@ -420,6 +420,8 @@ paths_fun <- function(data, index = 1:nrow(data),
   y <- x[[outcome]]
   a <- x[[treat]]==1
 
+  n <- nrow(x)
+
   # Adding weights, if needed
   if(ps) {
 
@@ -451,19 +453,40 @@ paths_fun <- function(data, index = 1:nrow(data),
     x_te <- x
 
     if(model_type(models[n_models]) %in% c("lm", "glm")) {
+
       x_te[,treat] <- 1
       E_a1 <- mean(predict(model_objects[[n_models]], newdata = data.frame(x_te)))
 
       x_te[,treat] <- 0
       E_a0 <- mean(predict(model_objects[[n_models]], newdata = data.frame(x_te)))
-    } else if(model_type(models[n_models]) == "BART") {
-      x_te[,treat] <- 1
-      mat_x_te <- model.matrix(formulas[[n_models]], x_te)[,colnames(model_objects[[n_models]]$varcount)]
-      E_a1 <- mean(predict(model_objects[[n_models]], newdata = mat_x_te)[["prob.test.mean"]])
 
-      x_te[,treat] <- 0
-      mat_x_te <- model.matrix(formulas[[n_models]], x_te)[,colnames(model_objects[[n_models]]$varcount)]
-      E_a0 <- mean(predict(model_objects[[n_models]], newdata = mat_x_te)[["prob.test.mean"]])
+    } else if(model_type(models[n_models]) == "BART") {
+
+      if(models[n_models] %in% c("pbart", "lbart")) {
+
+        x_te[,treat] <- 1
+        mat_x_te <- model.matrix(formulas[[n_models]], x_te)[,colnames(model_objects[[n_models]]$varcount)]
+        E_a1 <- mean(predict(model_objects[[n_models]], newdata = mat_x_te)[["prob.test.mean"]])
+
+        x_te[,treat] <- 0
+        mat_x_te <- model.matrix(formulas[[n_models]], x_te)[,colnames(model_objects[[n_models]]$varcount)]
+        E_a0 <- mean(predict(model_objects[[n_models]], newdata = mat_x_te)[["prob.test.mean"]])
+
+      } else if(models[n_models] == c("wbart")) {
+
+        x_te[,treat] <- 1
+        mat_x_te <- model.matrix(formulas[[n_models]], x_te)[,colnames(model_objects[[n_models]]$varcount)]
+        E_a1 <- mean(predict(model_objects[[n_models]], newdata = mat_x_te, dodraws = FALSE))
+
+        x_te[,treat] <- 0
+        mat_x_te <- model.matrix(formulas[[n_models]], x_te)[,colnames(model_objects[[n_models]]$varcount)]
+        E_a0 <- mean(predict(model_objects[[n_models]], newdata = mat_x_te, dodraws = FALSE))
+
+      } else {
+        stop(paste("Model ", k," belongs to an unsupported BART family"))
+      }
+
+
     }
   } else {
     # for experiments, TE can be calculated unconditionally
@@ -522,13 +545,19 @@ paths_fun <- function(data, index = 1:nrow(data),
       mat_x_a0 <- model.matrix(formulas[[k]], x_a0)[,colnames(model_objects[[k]]$varcount)]
 
       if (inherits(model_objects[[k]], c("pbart", "lbart"))) {
+
         mu_y_1_mk_0 <- predict(model_objects[[k]], newdata = mat_x_a0)[["prob.test.mean"]]
         y_1_mk_0 <- rbinom(n_a0, size = 1, prob = mu_y_1_mk_0)
+
       } else if(inherits(model_objects[[k]], "wbart")) {
+
         mu_y_1_mk_0 <- predict(model_objects[[k]], newdata = mat_x_a0, dodraws = FALSE)
         sigma <- mean(model_objects[[k]]$sigma)
         error <- rnorm(n_a0, mean = 0, sd = sigma)
         y_1_mk_0 <- mu_y_1_mk_0 + error
+
+      } else {
+        stop(paste("Model ", k," belongs to an unsupported BART family"))
       }
     }
 

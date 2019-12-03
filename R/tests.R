@@ -1,6 +1,6 @@
 #### Test data: results from the paper
 
-## Example 1
+### EXAMPLE 1 ###
 
 library(haven)
 library(dplyr)
@@ -11,7 +11,7 @@ library(boot)
 
 expit <- function(x) exp(x)/(1+exp(x))
 
-CCES10_public <- read_dta("CCES10_public.dta")
+CCES10_public <- read_dta("data/CCES10_public.dta")
 
 summary(CCES10_public$strikeo)
 
@@ -43,22 +43,11 @@ formula_a <- as.formula(paste(a, " ~ ", paste(c(x, m1, m2), collapse = "+")))
 model_a <- "glm"
 model_a_arg <- list(family = binomial(link = "logit"))
 
+#######
+
+## Testing model_fit
 model_fit(peace, list(formula_a), list(model_a), list(model_a_arg))
 
-load("peace_bart_full.RData")
-
-peace_decomp <- data.frame(out) %>%
-  `names<-`(c("te", "ay", "amy", "aly", "almy")) %>%
-  summarise_all(list(est = mean, lower = lower, upper = upper)) %>%
-  gather(measure, value) %>%
-  separate(measure, c("estimand", "measure")) %>%
-  spread(measure, value) %>%
-  mutate(decomp = "Type I Decomposition",
-         estimand = factor(estimand, levels = rev(c("te", "ay", "amy", "aly", "almy")),
-                           labels = rev(c("Total Effect", "Direct Effect",
-                                          "via Morality", "via Costs and Benefits", "via Costs and Benefits + Morality"))))
-
-#######
 ## Testing path_fun
 paths_fun(data = peace,
          index = 1:nrow(peace),
@@ -120,6 +109,34 @@ path_out <- paths(formulas = list(formula_y, formula_m2, formula_m1),
                   ps_model = "lm",
                   ps_model_args = list(NULL))
 
+path_out <- paths(formulas = list(formula_y, formula_m2, formula_m1),
+                  models = c("pbart", "pbart", "pbart"),
+                  models_args = list(NULL,
+                                     NULL,
+                                     NULL),
+                  conditional = TRUE,
+                  sims = 500,
+                  treat = "democ",
+                  outcome = "strikeo",
+                  data = peace,
+                  parallel = "multicore",
+                  ncpus = 25)
+
+path_out <- paths(formulas = list(formula_y, formula_m2, formula_m1),
+                  models = c("pbart", "pbart", "pbart"),
+                  models_args = list(NULL,
+                                     NULL,
+                                     NULL),
+                  conditional = TRUE,
+                  sims = 500,
+                  treat = "democ",
+                  outcome = "strikeo",
+                  data = peace,
+                  parallel = "multicore",
+                  ncpus = 25,
+                  ps = TRUE,
+                  ps_formula = formula_a)
+
 # Model as in the paper
 path_fun_out_peace <- paths_fun(data = peace,
                                 index = 1:nrow(peace),
@@ -146,7 +163,16 @@ path_out_peace <- paths(formulas = list(formula_y, formula_m2, formula_m1),
                   parallel = "multicore",
                   ncpus = 25)
 
+## Load output generated from paper code to compare
+load("data/peace_bart.RData")
+load("data/peace_bart_draw.RData")
 summary(path_out_peace)
+
+# output matches example
+peace_decomp_draw
+peace_decomp2_draw
+
+# old example without random draw for imputation has smaller error
 peace_decomp
 peace_decomp2
 
@@ -154,7 +180,7 @@ plot(path_out_peace)
 plot(path_out_peace, c("Morality", "Cost-Benefit Analysis"))
 
 
-## Example 2
+### EXAMPLE 2 ###
 
 library(haven)
 library(dplyr)
@@ -165,7 +191,7 @@ library(BART)
 library(survey)
 library(twang)
 
-Lupu_Peisakhin <- read_dta("3. Lupu_Peisakhin_Crimea_data.dta")
+Lupu_Peisakhin <- read_dta("data/3. Lupu_Peisakhin_Crimea_data.dta")
 
 summary(Lupu_Peisakhin)
 
@@ -222,6 +248,8 @@ formula_m2 <- as.formula(paste(y, " ~ ", paste(c(x, a, l), collapse= "+")))
 formula_m1 <- as.formula(paste(y, " ~ ", paste(c(x, a), collapse= "+")))
 formula_a <- as.formula(paste(a, " ~ ", paste(c(x), collapse= "+")))
 
+#######
+
 ## Test model_fit
 data <- tatar[which(tatar$violence == 0),]
 
@@ -266,9 +294,6 @@ model_yhat <- model_fit(data = data,
                         formulas = list(formula_a),
                         models = "pbart",
                         models_args = model_a_arg)
-
-# load output data
-load("annex_bart_mod.RData")
 
 
 ## Testing path_fun
@@ -334,10 +359,10 @@ path_out_annex <- paths(formulas = list(formula_y, formula_m3, formula_m2, formu
                                            NULL,
                                            NULL),
                         conditional = TRUE,
-                        ps = FALSE,
-                        #ps_formula = formula_a,
-                        #ps_model = "glm",
-                        #ps_model_args = list(family = binomial(link = "logit")),
+                        ps = TRUE,
+                        ps_formula = formula_a,
+                        ps_model = "glm",
+                        ps_model_args = list(family = binomial(link = "logit")),
                         sims = 500,
                         treat = "violence",
                         outcome = "annex",
@@ -347,6 +372,91 @@ path_out_annex <- paths(formulas = list(formula_y, formula_m3, formula_m2, formu
 
 summary(path_out_annex)
 
+## Load output generated from paper code to compare
+load("data/annex_bart.RData")
+load("data/annex_bart_draw.RData")
+summary(path_out_annex)
+plot(path_out_annex)
+
+tatar_decomp_draw
+tatar_decomp2_draw
+
 tatar_decomp
+tatar_decomp2
+
+tatar_decomp_pi_draw
+tatar_decomp2_pi_draw
+
 tatar_decomp_pi
 tatar_decomp2_pi
+
+
+
+### EXAMPLE 3 ###
+
+library(haven)
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+library(BART)
+
+expit <- function(x) exp(x)/(1+exp(x))
+
+lawton <- read_dta("data/lawton.dta")
+
+cfinance <- lawton %>%
+  dplyr::select(id_, frame, nodspeec, nodinter, dspeec, dinter, mdspeec, mdinter,
+                year, age, sex, ethnic, knowdum, ondum, pid, ideology,
+                speech, interests, impspe, impinter, mfopinio) %>%
+  filter(frame %in% c(0, 1)) %>%
+  mutate(ipw = 1)
+
+nrow(cfinance)
+summary(cfinance)
+
+# mean(cfinance$strikeo[cfinance$frame==1]) - mean(cfinance$strikeo[cfinance$frame==0])
+# lm(formula_te, data = cfinance)
+
+x <- c("year", "age", "sex", "ethnic", "knowdum", "ondum", "pid", "ideology")
+a <- "frame"
+l <- c("impspe", "impinter")
+m <- c("speech", "interests")
+y <- "mfopinio"
+
+
+# formula_te <- as.formula(paste(y, " ~ ", paste(c(x, a), collapse= "+")))
+
+summary(lm(formula_y, data = cfinance))
+formula_m2 <- as.formula(paste(y, " ~ ", paste(c(x, a), collapse= "+")))
+formula_m1 <- as.formula(paste(y, " ~ ", paste(c(x, a, l), collapse= "+")))
+formula_y <- as.formula(paste(y, " ~ ", paste(c(x, a, l, m), collapse= "+")))
+
+####
+
+## Model as in the paper << somehow still giving "invalid formula" error even though all the above is running smoothly
+path_out_cfinance <- paths(formulas = list(formula_y, formula_m2, formula_m1),
+                        models = c("wbart", "wbart", "wbart"),
+                        models_args = list(NULL,
+                                           NULL,
+                                           NULL),
+                        conditional = FALSE,
+                        ps = FALSE,
+                        sims = 500,
+                        treat = "frame",
+                        outcome = "mfopinio",
+                        data = cfinance,
+                        parallel = "multicore",
+                        ncpus = 25)
+
+summary(path_out_cfinance)
+
+## Load output generated from paper code to compare
+load("data/cfinance_bart.RData")
+load("data/cfinance_bart_draw.RData")
+summary(path_out_cfinance)
+
+cfinance_decomp_draw
+cfinance_decomp2_draw
+
+cfinance_decomp
+cfinance_decomp2

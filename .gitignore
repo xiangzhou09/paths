@@ -27,4 +27,3 @@ rsconnect/
 .Rproj.user
 # Example R codes and RData files
 data/
-R/0*.R
