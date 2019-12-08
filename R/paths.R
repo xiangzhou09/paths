@@ -206,13 +206,6 @@ paths <- function(formulas = NULL,
   eff_a_mk_y_t1_sim <- boot_out$t[, 4:(K+3), drop = FALSE]
   eff_a_mk_y_t2_sim <- boot_out$t[, (K+4):ncol(boot_out$t), drop = FALSE]
 
-  # Original point estimate applied to original data
-  # eff_te <- boot_out$t0[1]
-  # eff_a_y_t1 <- boot_out$t0[2]
-  # eff_a_y_t2 <- boot_out$t0[3]
-  # eff_a_mk_y_t1 <- boot_out$t0[4:(K+3)]
-  # eff_a_mk_y_t2 <- boot_out$t0[(K+4):length(boot_out$t0)]
-
   # Point estimate using bootstrap mean
   eff_ests <- apply(boot_out$t, 2, mean, na.rm = TRUE)
   eff_te <- eff_ests[1]
@@ -511,51 +504,20 @@ paths_fun <- function(data, index = 1:nrow(data),
     ## Impute counterfactual outcome for Y(1, M_k(0))
     if(model_type(models[k]) == "lm") {
 
-      mu_y_1_mk_0 <- predict(model_objects[[k]], newdata = x_a0)
-
-      sigma <- sqrt(summary(model_objects[[k]])$sigma)
-      error <- rnorm(n_a0, mean = 0, sd = sigma)
-      y_1_mk_0 <- mu_y_1_mk_0 + error
-
+      y_1_mk_0 <- predict(model_objects[[k]], newdata = x_a0)
 
     } else if(model_type(models[k]) == "glm") {
 
-      mu_y_1_mk_0 <- predict(model_objects[[k]], newdata = x_a0)
-
-      if(family(model_objects[[k]]) == "poisson"){
-        y_1_mk_0 <- rpois(n_a0, lambda = mu_y_1_mk_0)
-      } else if (family(model_objects[[k]]) == "Gamma") {
-        shape <- gamma.shape(model_objects[[k]])$alpha
-        y_1_mk_0 <- rgamma(n_a0, shape = shape, scale = mu_y_1_mk_0/shape)
-      } else if (family(model_objects[[k]]) == "binomial"){
-        y_1_mk_0 <- rbinom(n_a0, size = 1, prob = mu_y_1_mk_0)
-      } else if (family(model_objects[[k]]) == "gaussian"){
-        sigma <- sqrt(summary(model_objects[[k]])$dispersion)
-        error <- rnorm(n_a0, mean = 0, sd = sigma)
-        y_1_mk_0 <- mu_y_1_mk_0 + error
-      } else if (family(model_objects[[k]]) == "inverse.gaussian"){
-        disp <- summary(model_objects[[k]])$dispersion
-        y_1_mk_0 <- SuppDists::rinvGauss(n_a0, nu = mu_y_1_mk_0, lambda = 1/disp)
-      } else {
-        stop(paste("Model ", k," belongs to an unsupported glm family"))
-      }
+      y_1_mk_0 <- predict(model_objects[[k]], newdata = x_a0)
 
     } else if(model_type(models[k]) == "BART") {
 
       mat_x_a0 <- model.matrix(formulas[[k]], x_a0)[,colnames(model_objects[[k]]$varcount)]
 
       if (inherits(model_objects[[k]], c("pbart", "lbart"))) {
-
-        mu_y_1_mk_0 <- predict(model_objects[[k]], newdata = mat_x_a0)[["prob.test.mean"]]
-        y_1_mk_0 <- rbinom(n_a0, size = 1, prob = mu_y_1_mk_0)
-
+        y_1_mk_0 <- predict(model_objects[[k]], newdata = mat_x_a0)[["prob.test.mean"]]
       } else if(inherits(model_objects[[k]], "wbart")) {
-
-        mu_y_1_mk_0 <- predict(model_objects[[k]], newdata = mat_x_a0, dodraws = FALSE)
-        sigma <- mean(model_objects[[k]]$sigma)
-        error <- rnorm(n_a0, mean = 0, sd = sigma)
-        y_1_mk_0 <- mu_y_1_mk_0 + error
-
+        y_1_mk_0 <- predict(model_objects[[k]], newdata = mat_x_a0, dodraws = FALSE)
       } else {
         stop(paste("Model ", k," belongs to an unsupported BART family"))
       }
@@ -571,22 +533,34 @@ paths_fun <- function(data, index = 1:nrow(data),
       x_a0[[outcome]] <- y_1_mk_0
       formula_yhat <- update(formulas[[n_models]], paste(". ~ . -", treat))
 
-      model_yhat <- model_fit(x_a0,
-                              list(formula_yhat),
-                              models[n_models],
-                              list(models_args[[n_models]]))[[1]]
+      model_yhat <- models[n_models]
+      model_args_yhat <- model_args[[n_models]]
+
+      ## For Poisson and Binomial models, use quasi family to fit continuous outcomes
+      if(model_type(models[n_models]) == "glm") {
+        if(family(model_objects[[k]]) == "poisson"){
+          model_args_yhat$family <- quasipoisson(link = model_args_yhat$family$link)
+        } else if (family(model_objects[[k]]) == "binomial"){
+          model_args_yhat$family <- quasibinomial(link = model_args_yhat$family$link)
+        }
+      }
+
+      model_objects_yhat <- model_fit(x_a0,
+                                      list(formula_yhat),
+                                      model_yhat,
+                                      list(model_args_yhat))[[1]]
 
       if(model_type(models[n_models]) %in% c("lm", "glm")) {
 
-        y_1_mk_0 <- predict(model_yhat, newdata = x)
+        y_1_mk_0 <- predict(model_objects_yhat, newdata = x)
 
       } else if(model_type(models[n_models]) == "BART") {
 
-        mat_x <- model.matrix(formula_yhat, x)[,colnames(model_yhat$varcount)]
-        if(inherits(model_yhat, c("pbart", "lbart"))) {
-          y_1_mk_0 <- predict(model_yhat, newdata = mat_x)[["prob.test.mean"]]
-        } else if(inherits(model_yhat, "wbart"))  {
-          y_1_mk_0 <- predict(model_yhat, newdata = mat_x, dodraws = FALSE)
+        mat_x <- model.matrix(formula_yhat, x)[,colnames(model_objects_yhat$varcount)]
+        if(inherits(model_objects_yhat, c("pbart", "lbart"))) {
+          y_1_mk_0 <- predict(model_objects_yhat, newdata = mat_x)[["prob.test.mean"]]
+        } else if(inherits(model_objects_yhat, "wbart"))  {
+          y_1_mk_0 <- predict(model_objects_yhat, newdata = mat_x, dodraws = FALSE)
         }
 
       }
@@ -624,47 +598,20 @@ paths_fun <- function(data, index = 1:nrow(data),
     ## Impute counterfactual outcome for Y(1, M_k(0))
     if(model_type(models[k]) == "lm") {
 
-      mu_y_0_mk_1 <- predict(model_objects[[k]], newdata = x_a1)
-
-      sigma <- sqrt(summary(model_objects[[k]])$sigma)
-      error <- rnorm(n_a1, mean = 0, sd = sigma)
-      y_0_mk_1 <- mu_y_0_mk_1 + error
-
+      y_0_mk_1 <- predict(model_objects[[k]], newdata = x_a1)
 
     } else if(model_type(models[k]) == "glm") {
 
-      mu_y_0_mk_1 <- predict(model_objects[[k]], newdata = x_a1)
-
-      if(family(model_objects[[k]]) == "poisson"){
-        y_0_mk_1 <- rpois(n_a1, lambda = mu_y_0_mk_1)
-      } else if (family(model_objects[[k]]) == "Gamma") {
-        shape <- gamma.shape(model_objects[[k]])$alpha
-        y_0_mk_1 <- rgamma(n_a1, shape = shape, scale = mu_y_0_mk_1/shape)
-      } else if (family(model_objects[[k]]) == "binomial"){
-        y_0_mk_1 <- rbinom(n_a1, size = 1, prob = mu_y_0_mk_1)
-      } else if (family(model_objects[[k]]) == "gaussian"){
-        sigma <- sqrt(summary(model_objects[[k]])$dispersion)
-        error <- rnorm(n_a1, mean = 0, sd = sigma)
-        y_0_mk_1 <- mu_y_0_mk_1 + error
-      } else if (family(model_objects[[k]]) == "inverse.gaussian"){
-        disp <- summary(model_objects[[k]])$dispersion
-        y_0_mk_1 <- SuppDists::rinvGauss(n_a1, nu = mu_y_0_mk_1, lambda = 1/disp)
-      } else {
-        stop(paste("Model ", k," belongs to an unsupported glm family"))
-      }
+      y_0_mk_1 <- predict(model_objects[[k]], newdata = x_a1)
 
     } else if(model_type(models[k]) == "BART") {
 
       mat_x_a1 <- model.matrix(formulas[[k]], x_a1)[,colnames(model_objects[[k]]$varcount)]
 
       if (inherits(model_objects[[k]], c("pbart", "lbart"))) {
-        mu_y_0_mk_1 <- predict(model_objects[[k]], newdata = mat_x_a1)[["prob.test.mean"]]
-        y_0_mk_1 <- rbinom(n_a1, size = 1, prob = mu_y_0_mk_1)
+        y_0_mk_1 <- predict(model_objects[[k]], newdata = mat_x_a1)[["prob.test.mean"]]
       } else if(inherits(model_objects[[k]], "wbart")) {
-        mu_y_0_mk_1 <- predict(model_objects[[k]], newdata = mat_x_a1, dodraws = FALSE)
-        sigma <- mean(model_objects[[k]]$sigma)
-        error <- rnorm(n_a1, mean = 0, sd = sigma)
-        y_0_mk_1 <- mu_y_0_mk_1 + error
+        y_0_mk_1 <- predict(model_objects[[k]], newdata = mat_x_a1, dodraws = FALSE)
       }
     }
 
@@ -675,25 +622,39 @@ paths_fun <- function(data, index = 1:nrow(data),
       ## a model Y ~ X that follows the specification
       ## of the model Y ~ A + X (k = K)
 
+
       x_a1[[outcome]] <- y_0_mk_1
       formula_yhat <- update(formulas[[n_models]], paste(". ~ . -", treat))
 
-      model_yhat <- model_fit(x_a1,
-                              list(formula_yhat),
-                              models[n_models],
-                              list(models_args[[n_models]]))[[1]]
+      model_yhat <- models[n_models]
+      model_args_yhat <- model_args[[n_models]]
+
+      ## For Poisson and Binomial models, use quasi family to fit continuous outcomes
+      if(model_type(models[n_models]) == "glm") {
+        if(family(model_objects[[k]]) == "poisson"){
+          model_args_yhat$family <- quasipoisson(link = model_args_yhat$family$link)
+        } else if (family(model_objects[[k]]) == "binomial"){
+          model_args_yhat$family <- quasibinomial(link = model_args_yhat$family$link)
+        }
+      }
+
+      model_objects_yhat <- model_fit(x_a0,
+                                      list(formula_yhat),
+                                      model_yhat,
+                                      list(model_args_yhat))[[1]]
+
 
       if(model_type(models[n_models]) %in% c("lm", "glm")) {
 
-        y_0_mk_1 <- predict(model_yhat, newdata = x)
+        y_0_mk_1 <- predict(model_objects_yhat, newdata = x)
 
       } else if(model_type(models[n_models]) == "BART") {
 
         mat_x <- model.matrix(formula_yhat, x)[,colnames(model_yhat$varcount)]
-        if(inherits(model_yhat, c("pbart", "lbart"))) {
-          y_0_mk_1 <- predict(model_yhat, newdata = mat_x)[["prob.test.mean"]]
-        } else if(inherits(model_yhat, "wbart"))  {
-          y_0_mk_1 <- predict(model_yhat, newdata = mat_x, dodraws = FALSE)
+        if(inherits(model_objects_yhat, c("pbart", "lbart"))) {
+          y_0_mk_1 <- predict(model_objects_yhat, newdata = mat_x)[["prob.test.mean"]]
+        } else if(inherits(model_objects_yhat, "wbart"))  {
+          y_0_mk_1 <- predict(model_objects_yhat, newdata = mat_x, dodraws = FALSE)
         }
 
       }
