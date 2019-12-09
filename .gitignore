@@ -26,4 +26,4 @@ vignettes/*.pdf
 rsconnect/
 .Rproj.user
 # Example R codes and RData files
-data/
+internal/*.RData
