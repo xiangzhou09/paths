@@ -382,6 +382,16 @@ print.paths <- function(x, ...) {
     cat("Total Effect calculated unconditionally \n")
   }
 
+  cat("\n")
+  if(x$ps){
+    cat("Paths Estimates calculated using IPW \n")
+    cat("Propensity score model: ")
+    print(x$ps_formula[[1]])
+
+  } else {
+    cat("Paths Estimates calculated using imputation method \n")
+  }
+
   invisible(x)
 }
 
@@ -399,6 +409,8 @@ summary.paths <- function(x, ...){
   mediators <- x$mediators
   covariates <- x$covariates
   formulas <- x$formulas
+  ps <- x$ps
+  ps_formula <- x$ps_formula
   nobs <- nrow(x$data)
   sims <- x$sims
   conf.level <- x$conf.level
@@ -428,6 +440,8 @@ summary.paths <- function(x, ...){
               mediators = mediators,
               covariates = covariates,
               formulas = formulas,
+              ps = ps,
+              ps_formula = ps_formula,
               nobs = nobs,
               sims = sims,
               conf.level = conf.level,
@@ -497,6 +511,16 @@ print.summary.paths <- function(x, ...) {
     cat("Total Effect calculated conditional on covariates \n")
   } else {
     cat("Total Effect calculated unconditionally \n")
+  }
+
+  cat("\n")
+  if(x$ps){
+    cat("Paths Estimates calculated using IPW \n")
+    cat("Propensity score model: ")
+    print(x$ps_formula[[1]])
+
+  } else {
+    cat("Paths Estimates calculated using imputation method \n")
   }
 
   cat("\n\n")

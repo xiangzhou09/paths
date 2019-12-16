@@ -148,7 +148,7 @@ paths_fun <- function(data, index = 1:nrow(data),
       formula_yhat <- update(formulas[[n_models]], paste(". ~ . -", treat))
 
       model_yhat <- models[n_models]
-      model_args_yhat <- model_args[[n_models]]
+      model_args_yhat <- models_args[[n_models]]
 
       ## For Poisson and Binomial models, use quasi family to fit continuous outcomes
       if(model_type(models[n_models]) == "glm") {
@@ -253,7 +253,7 @@ paths_fun <- function(data, index = 1:nrow(data),
       formula_yhat <- update(formulas[[n_models]], paste(". ~ . -", treat))
 
       model_yhat <- models[n_models]
-      model_args_yhat <- model_args[[n_models]]
+      model_args_yhat <- models_args[[n_models]]
 
       ## For Poisson and Binomial models, use quasi family to fit continuous outcomes
       if(model_type(models[n_models]) == "glm") {

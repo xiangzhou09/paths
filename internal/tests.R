@@ -11,7 +11,7 @@ library(boot)
 
 expit <- function(x) exp(x)/(1+exp(x))
 
-CCES10_public <- read_dta("data/CCES10_public.dta")
+CCES10_public <- read_dta("internal/CCES10_public.dta")
 
 summary(CCES10_public$strikeo)
 
@@ -50,19 +50,19 @@ model_fit(peace, list(formula_a), list(model_a), list(model_a_arg))
 
 ## Testing path_fun
 paths_fun(data = peace,
-         index = 1:nrow(peace),
-         formulas = list(formula_y, formula_m2, formula_m1),
-         models = c("pbart", "pbart", "pbart"),
-         models_args = list(NULL,
-                            NULL,
-                            NULL),
-         treat = "democ",
-         outcome = "strikeo",
-         conditional = FALSE,
-         ps = TRUE,
-         ps_formula = list(formula_a),
-         ps_model = "glm",
-         ps_model_args = list(list(binomial(link = "logit"))))
+          index = 1:nrow(peace),
+          formulas = list(formula_y, formula_m2, formula_m1),
+          models = c("pbart", "pbart", "pbart"),
+          models_args = list(NULL,
+                             NULL,
+                             NULL),
+          treat = "democ",
+          outcome = "strikeo",
+          conditional = FALSE,
+          ps = TRUE,
+          ps_formula = list(formula_a),
+          ps_model = "glm",
+          ps_model_args = list(list(binomial(link = "logit"))))
 
 ## Using formula
 path_out <- paths(formulas = list(formula_y, formula_m2),
@@ -151,21 +151,21 @@ path_fun_out_peace <- paths_fun(data = peace,
                                 ps = FALSE)
 
 path_out_peace <- paths(formulas = list(formula_y, formula_m2, formula_m1),
-                  models = c("pbart", "pbart", "pbart"),
-                  models_args = list(NULL,
-                                     NULL,
-                                     NULL),
-                  conditional = FALSE,
-                  sims = 500,
-                  treat = "democ",
-                  outcome = "strikeo",
-                  data = peace,
-                  parallel = "multicore",
-                  ncpus = 25)
+                        models = c("pbart", "pbart", "pbart"),
+                        models_args = list(NULL,
+                                           NULL,
+                                           NULL),
+                        conditional = FALSE,
+                        sims = 500,
+                        treat = "democ",
+                        outcome = "strikeo",
+                        data = peace,
+                        parallel = "multicore",
+                        ncpus = 25)
 
 ## Load output generated from paper code to compare
-load("data/peace_bart.RData")
-load("data/peace_bart_draw.RData")
+load("internal/peace_bart.RData")
+load("internal/peace_bart_draw.RData")
 summary(path_out_peace)
 
 # output matches example
@@ -191,7 +191,7 @@ library(BART)
 library(survey)
 library(twang)
 
-Lupu_Peisakhin <- read_dta("data/3. Lupu_Peisakhin_Crimea_data.dta")
+Lupu_Peisakhin <- read_dta("internal/3. Lupu_Peisakhin_Crimea_data.dta")
 
 summary(Lupu_Peisakhin)
 
@@ -255,42 +255,42 @@ data <- tatar[which(tatar$violence == 0),]
 
 # EXPECT ERROR (TO PREVENT CRASH)
 model_a_arg <- list(NULL)
-model_yhat <- model_fit(data = data,
+model_yhat <- model_fit(data = tatar,
                         formulas = list(formula_a),
                         models = "pbart",
                         models_args = list(model_a_arg))
 
 # EXPECT ERROR (REDUNDANT BUT JUST IN CASE)
 model_a_arg <- list(NULL)
-model_yhat <- model_fit(data = data,
+model_yhat <- model_fit(data = tatar,
                         formulas = list(formula_a),
                         models = "lm",
                         models_args = list(model_a_arg))
 
 # EXPECT NO ERROR
 model_a_arg <- NULL
-model_yhat <- model_fit(data = data,
+model_yhat <- model_fit(data = tatar,
                         formulas = list(formula_a),
                         models = "pbart",
                         models_args = list(model_a_arg))
 
 # EXPECT NO ERROR
 model_a_arg <- list(theta = 0)
-model_yhat <- model_fit(data = data,
+model_yhat <- model_fit(data = tatar,
                         formulas = list(formula_a),
                         models = "pbart",
                         models_args = list(model_a_arg))
 
 # EXPECT ERROR
 model_a_arg <- list(theta = 0, omega = 1)
-model_yhat <- model_fit(data = data,
+model_yhat <- model_fit(data = tatar,
                         formulas = list(formula_a),
                         models = "pbart",
                         models_args = model_a_arg)
 
 # EXPECT ERROR
 model_a_arg <- list(sparse = FALSE, omega = 1)
-model_yhat <- model_fit(data = data,
+model_yhat <- model_fit(data = tatar,
                         formulas = list(formula_a),
                         models = "pbart",
                         models_args = model_a_arg)
@@ -327,7 +327,6 @@ paths_fun(data = tatar,
           outcome = "annex",
           conditional = TRUE,
           ps = FALSE)
-
 
 ## Testing boot
 
@@ -373,8 +372,8 @@ path_out_annex <- paths(formulas = list(formula_y, formula_m3, formula_m2, formu
 summary(path_out_annex)
 
 ## Load output generated from paper code to compare
-load("data/annex_bart.RData")
-load("data/annex_bart_draw.RData")
+load("internal/annex_bart.RData")
+load("internal/annex_bart_draw.RData")
 summary(path_out_annex)
 plot(path_out_annex)
 
@@ -390,7 +389,45 @@ tatar_decomp2_pi_draw
 tatar_decomp_pi
 tatar_decomp2_pi
 
+## benchmarking performace
 
+benchmark_annex <- microbenchmark::microbenchmark(paths(formulas = list(formula_y, formula_m3, formula_m2, formula_m1),
+                                                        models = c("pbart", "pbart", "pbart", "pbart"),
+                                                        models_args = list(NULL,
+                                                                           NULL,
+                                                                           NULL,
+                                                                           NULL),
+                                                        conditional = TRUE,
+                                                        ps = TRUE,
+                                                        ps_formula = formula_a,
+                                                        ps_model = "glm",
+                                                        ps_model_args = list(family = binomial(link = "logit")),
+                                                        sims = 100,
+                                                        treat = "violence",
+                                                        outcome = "annex",
+                                                        data = tatar,
+                                                        parallel = "multicore",
+                                                        ncpus = 25),
+                                                  paths(formulas = list(formula_y, formula_m3, formula_m2, formula_m1),
+                                                        models = c("glm", "glm", "glm", "glm"),
+                                                        models_args = list(list(family = binomial(link = logit)),
+                                                                           list(family = binomial(link = logit)),
+                                                                           list(family = binomial(link = logit)),
+                                                                           list(family = binomial(link = logit))),
+                                                        conditional = TRUE,
+                                                        ps = TRUE,
+                                                        ps_formula = formula_a,
+                                                        ps_model = "glm",
+                                                        ps_model_args = list(family = binomial(link = "logit")),
+                                                        sims = 100,
+                                                        treat = "violence",
+                                                        outcome = "annex",
+                                                        data = tatar,
+                                                        parallel = "multicore",
+                                                        ncpus = 25),
+                                                  times = 100)
+
+benchmark_annex
 
 ### EXAMPLE 3 ###
 
@@ -402,7 +439,7 @@ library(BART)
 
 expit <- function(x) exp(x)/(1+exp(x))
 
-lawton <- read_dta("data/lawton.dta")
+lawton <- read_dta("internal/lawton.dta")
 
 cfinance <- lawton %>%
   dplyr::select(id_, frame, nodspeec, nodinter, dspeec, dinter, mdspeec, mdinter,
@@ -435,24 +472,24 @@ formula_y <- as.formula(paste(y, " ~ ", paste(c(x, a, l, m), collapse= "+")))
 
 ## Model as in the paper << somehow still giving "invalid formula" error even though all the above is running smoothly
 path_out_cfinance <- paths(formulas = list(formula_y, formula_m2, formula_m1),
-                        models = c("wbart", "wbart", "wbart"),
-                        models_args = list(NULL,
-                                           NULL,
-                                           NULL),
-                        conditional = FALSE,
-                        ps = FALSE,
-                        sims = 500,
-                        treat = "frame",
-                        outcome = "mfopinio",
-                        data = cfinance,
-                        parallel = "multicore",
-                        ncpus = 25)
+                           models = c("wbart", "wbart", "wbart"),
+                           models_args = list(NULL,
+                                              NULL,
+                                              NULL),
+                           conditional = FALSE,
+                           ps = FALSE,
+                           sims = 500,
+                           treat = "frame",
+                           outcome = "mfopinio",
+                           data = cfinance,
+                           parallel = "multicore",
+                           ncpus = 25)
 
 summary(path_out_cfinance)
 
 ## Load output generated from paper code to compare
-load("data/cfinance_bart.RData")
-load("data/cfinance_bart_draw.RData")
+load("internal/cfinance_bart.RData")
+load("internal/cfinance_bart_draw.RData")
 summary(path_out_cfinance)
 
 cfinance_decomp_draw
