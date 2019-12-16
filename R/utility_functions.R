@@ -21,8 +21,8 @@ model_type <- function(model) {
 
 }
 
-#### internal function to refit the model given formulas
-model_fit <- function(data, formulas, models, models_args) {
+#### Internal function to refit the model given formulas
+model_fit <- function(data, formulas, models, models_args = NULL) {
 
   ## Input check for when model_fit is called independently outside of paths
 
@@ -41,15 +41,14 @@ model_fit <- function(data, formulas, models, models_args) {
     stop("'models' must be supplied as a vector or a list of model types")
   } else if(inherits(models, "list")) {
     models <- unlist(models)
-
-    if(length(models) != n_models) {
+  }
+  if(length(models) != n_models) {
       stop("Arguments 'formulas' and 'models' must be of equal lengths")
-    }
   }
 
   # Check if model argument(s) are provided correctly
-  if(is.null(models_args)){
-    warning("Argument 'models_args' is not supplied, using default specifications for all models")
+  if(is.null(models_args) | missing(models_args)){
+    message("Argument 'models_args' is not supplied, using default specifications for all models")
     models_args <- rep(NULL, length(formulas))
 
   } else {
@@ -58,7 +57,7 @@ model_fit <- function(data, formulas, models, models_args) {
       stop("Argument 'models_args' must be a list containing lists of arguments or NULL")
     } else if (any(sapply(models_args, function(x) any(sapply(x, is.null))))) {
       # prevent pbart from crashing if NULL is submitted as an argument
-      stop("No list of arguments within 'models_args' can contain NULL")
+      stop("No list of arguments within 'models_args' may contain NULL")
     }
 
     if(length(models_args) != n_models) {
@@ -97,6 +96,7 @@ model_fit <- function(data, formulas, models, models_args) {
                 models_args[[i]],
                 list(printevery = 2000))
 
+      sink(tempfile())
       if(models[i] == "wbart") {
         model_objects[[i]] <- do.call(wbart, args)
       } else if(models[i] == "pbart") {
@@ -104,6 +104,7 @@ model_fit <- function(data, formulas, models, models_args) {
       } else if(models[i] == "lbart") {
         model_objects[[i]] <- do.call(lbart, args)
       }
+      sink()
 
     }
 

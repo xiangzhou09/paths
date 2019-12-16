@@ -59,6 +59,8 @@ paths_fun <- function(data, index = 1:nrow(data),
 
       if(models[n_models] %in% c("pbart", "lbart")) {
 
+        sink(tempfile())
+
         x_te[,treat] <- 1
         mat_x_te <- model.matrix(formulas[[n_models]], x_te)[,colnames(model_objects[[n_models]]$varcount)]
         E_a1 <- mean(predict(model_objects[[n_models]], newdata = mat_x_te)[["prob.test.mean"]])
@@ -67,7 +69,11 @@ paths_fun <- function(data, index = 1:nrow(data),
         mat_x_te <- model.matrix(formulas[[n_models]], x_te)[,colnames(model_objects[[n_models]]$varcount)]
         E_a0 <- mean(predict(model_objects[[n_models]], newdata = mat_x_te)[["prob.test.mean"]])
 
+        sink()
+
       } else if(models[n_models] == c("wbart")) {
+
+        sink(tempfile())
 
         x_te[,treat] <- 1
         mat_x_te <- model.matrix(formulas[[n_models]], x_te)[,colnames(model_objects[[n_models]]$varcount)]
@@ -76,6 +82,8 @@ paths_fun <- function(data, index = 1:nrow(data),
         x_te[,treat] <- 0
         mat_x_te <- model.matrix(formulas[[n_models]], x_te)[,colnames(model_objects[[n_models]]$varcount)]
         E_a0 <- mean(predict(model_objects[[n_models]], newdata = mat_x_te, dodraws = FALSE))
+
+        sink()
 
       } else {
         stop(paste("Model ", k," belongs to an unsupported BART family"))
@@ -117,9 +125,13 @@ paths_fun <- function(data, index = 1:nrow(data),
       mat_x_a0 <- model.matrix(formulas[[k]], x_a0)[,colnames(model_objects[[k]]$varcount)]
 
       if (inherits(model_objects[[k]], c("pbart", "lbart"))) {
+        sink(tempfile())
         y_1_mk_0 <- predict(model_objects[[k]], newdata = mat_x_a0)[["prob.test.mean"]]
+        sink()
       } else if(inherits(model_objects[[k]], "wbart")) {
+        sink(tempfile())
         y_1_mk_0 <- predict(model_objects[[k]], newdata = mat_x_a0, dodraws = FALSE)
+        sink()
       } else {
         stop(paste("Model ", k," belongs to an unsupported BART family"))
       }
@@ -160,9 +172,15 @@ paths_fun <- function(data, index = 1:nrow(data),
 
         mat_x <- model.matrix(formula_yhat, x)[,colnames(model_objects_yhat$varcount)]
         if(inherits(model_objects_yhat, c("pbart", "lbart"))) {
+          sink(tempfile())
           y_1_mk_0 <- predict(model_objects_yhat, newdata = mat_x)[["prob.test.mean"]]
+          sink()
         } else if(inherits(model_objects_yhat, "wbart"))  {
+          sink(tempfile())
           y_1_mk_0 <- predict(model_objects_yhat, newdata = mat_x, dodraws = FALSE)
+          sink()
+        } else {
+          stop(paste("Model ", n_models," belongs to an unsupported BART family"))
         }
 
       }
@@ -211,9 +229,15 @@ paths_fun <- function(data, index = 1:nrow(data),
       mat_x_a1 <- model.matrix(formulas[[k]], x_a1)[,colnames(model_objects[[k]]$varcount)]
 
       if (inherits(model_objects[[k]], c("pbart", "lbart"))) {
+        sink(tempfile())
         y_0_mk_1 <- predict(model_objects[[k]], newdata = mat_x_a1)[["prob.test.mean"]]
+        sink()
       } else if(inherits(model_objects[[k]], "wbart")) {
+        sink(tempfile())
         y_0_mk_1 <- predict(model_objects[[k]], newdata = mat_x_a1, dodraws = FALSE)
+        sink()
+      } else {
+        stop(paste("Model ", k," belongs to an unsupported BART family"))
       }
     }
 
@@ -254,9 +278,15 @@ paths_fun <- function(data, index = 1:nrow(data),
 
         mat_x <- model.matrix(formula_yhat, x)[,colnames(model_yhat$varcount)]
         if(inherits(model_objects_yhat, c("pbart", "lbart"))) {
+          sink(tempfile())
           y_0_mk_1 <- predict(model_objects_yhat, newdata = mat_x)[["prob.test.mean"]]
+          sink()
         } else if(inherits(model_objects_yhat, "wbart"))  {
+          sink(tempfile())
           y_0_mk_1 <- predict(model_objects_yhat, newdata = mat_x, dodraws = FALSE)
+          sink()
+        } else {
+          stop(paste("Model ", n_models," belongs to an unsupported BART family"))
         }
 
       }
