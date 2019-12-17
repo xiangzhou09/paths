@@ -3,8 +3,91 @@
 #####################################################
 #' Causal Paths Analysis
 #'
-#' @param formulas A list of formulas.
-#' @param models A list of model types.
+#' @param formulas a list of \eqn{K+1} formulas where \eqn{K} is the number
+#' of mediators in the causal chain.
+#' \itemize{
+#'   \item The first formula must describe a fully-specified
+#'   model of the outcome conditional on all model variables
+#'   \\ i.e. \eqn{Y ~ X + A + M_1 + \ldots + M_K}
+#'   \item The second formula must describe a model of the
+#'   outcome conditional on all model variables
+#'   except the last mediator(s) in the causal chain
+#'   \\ i.e. \eqn{Y ~ X + A + M_1 + \ldots + M_{K-1}}
+#'   \item Each subsequent formula must describe a model of the
+#'   outcome conditional on all model variables
+#'   except the two last mediator(s) in the causal chain
+#'   \\ i.e. \eqn{Y ~ X + A + M_1 + \ldots + M_{K-2}},
+#'   \eqn{Y ~ X + A + M_1 + \ldots + M_{K-3}}, etc.
+#'   \item The last formula must describe a model of the
+#'   outcome conditional on all model variables
+#'   except any of the mediator.
+#'   \\ i.e. \eqn{Y ~ X + A},
+#' }
+#' The outcome variable \eqn{Y} can belong to any type that is supported
+#' by \code{lm}, \code{glm}, \code{BART::wbart}, \code{BART::pbart},
+#' or \code{BART::lbart}, but the model type must be correctly specified
+#' in the \code{models} and \code{models_args} arguments
+#'
+#' The treatment variable \eqn{A} must be a binary variable.
+#'
+#' The names of the mediator variables and covariates are automatically
+#' extracted from the formulas.
+#'
+#' @param models a list or a vector of \eqn{K+1} strings specifing
+#' the method to be used to fit each of the models. Supported methods
+#' are \code{lm}, \code{glm}, \code{wbart}, \code{pbart}, and \code{lbart}
+#' (the last three methods require the \code{BART} package.)
+#'
+#' @param models_args a list of \eqn{K+1}, each containing the arguments
+#' to be passed to each of the models' fitting methods. For the \code{glm}
+#' method, the arguments can be used to specify model family.
+#'
+#' @param sims number of Bootstrap draws for estimating uncertainty
+#'
+#' @param treat a character string indicating the name of the treatment
+#' variable used in the models. Only binary treatment is currently supported.
+#'
+#' @param outcome a character string indicating the name of the treatment
+#' variable used in the models. The outcome variable must be
+#' compatible with the models specified by \code{models}
+#' and \code{models_args}.
+#'
+#' @param conditional a logical value. If \code{FALSE}, the total treatment
+#' effect will be estimated unconditionally as a difference of means
+#' between the treatment and control groups. This is advised for
+#' data obtained from a randomized experiment. If \code{TRUE}, the
+#' total treatment effect will be estimated conditionally on the covariates
+#' specified in \code{formulas}. This is advised for data obtained
+#' from an observational study.
+#'
+#' @param ps a logical value. If \code{FALSE}, the path-specific causal
+#' effects will be estimated using a pure imputation approach. If \code{TRUE},
+#' the imputation-based weighting estimator will be used instead.
+#'
+#' @param ps_formula a formula with the treatment variable as the response
+#' variable. This formula must describe the propensity score model used to
+#' estimate propensity scores and calculates imputation weights.
+#'
+#' @param ps_model a character string specifing
+#' the method to be used to fit the propensity score model. Supported methods
+#' are \code{lm}, \code{glm}, \code{wbart}, \code{pbart}, and \code{lbart}
+#'
+#' @param ps_model_args a list of arguments to be passed to the propensity
+#' score model's fitting method. For the \code{glm} method, the arguments
+#' can be used to specify model family.
+#'
+#' @param conf.level of the returned two-sided confidence intervals. Default is
+#' to return the 2.5 and 97.5 percentiles of the bootstraped effect estimates.
+#'
+#' @param long a logical value. If \code{TRUE}, the output will contain the
+#' entire set of bootstrap draws of the effect estimates.
+#'
+#' @param data a data frame, list or environment containing the variables
+#' in the models. Incomplete cases will be automatically dropped.
+#'
+#' @param ... additional arguments to be passed to \code{boot::boot},
+#' e.g. \code{parallel} and \code{ncpus}
+#'
 #' @return An object of class "paths"
 #' @examples
 #'
@@ -140,7 +223,7 @@ paths <- function(formulas = NULL,
 
       if(length(dplyr::setdiff(all.vars(ps_formula),
                                all.vars(formulas[[1]]))) > 0) {
-        stop("'ps_formula' must contained variables in the main models")
+        stop("'ps_formula' must contain variables in the main models")
       }
     }
 

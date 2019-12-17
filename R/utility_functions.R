@@ -98,11 +98,11 @@ model_fit <- function(data, formulas, models, models_args = NULL) {
 
       sink(tempfile())
       if(models[i] == "wbart") {
-        model_objects[[i]] <- do.call(wbart, args)
+        model_objects[[i]] <- do.call(BART::wbart, args)
       } else if(models[i] == "pbart") {
-        model_objects[[i]] <- do.call(pbart, args)
+        model_objects[[i]] <- do.call(BART::pbart, args)
       } else if(models[i] == "lbart") {
-        model_objects[[i]] <- do.call(lbart, args)
+        model_objects[[i]] <- do.call(BART::lbart, args)
       }
       sink()
 
