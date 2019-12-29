@@ -22,6 +22,7 @@ model_type <- function(model) {
 }
 
 #### Internal function to refit the model given formulas
+
 model_fit <- function(data, formulas, models, models_args = NULL) {
 
   ## Input check for when model_fit is called independently outside of paths

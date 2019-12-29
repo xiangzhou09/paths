@@ -1,4 +1,5 @@
 #### workhorse function to generate point estimates
+
 paths_fun <- function(data, index = 1:nrow(data),
                       formulas, models, models_args,
                       treat, outcome,
@@ -86,7 +87,7 @@ paths_fun <- function(data, index = 1:nrow(data),
         sink()
 
       } else {
-        stop(paste("Model ", k," belongs to an unsupported BART family"))
+        stop(paste("Model ", n_models," belongs to an unsupported BART family"))
       }
 
 

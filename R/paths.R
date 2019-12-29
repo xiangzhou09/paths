@@ -1,7 +1,10 @@
 #####################################################
 # Primary function
 #####################################################
+#'
 #' Causal Paths Analysis
+#'
+#' @aliases summary.paths print.summary.paths
 #'
 #' @param formulas a list of \eqn{K+1} formulas where \eqn{K} is the number
 #' of mediators in the causal chain.
@@ -132,7 +135,6 @@
 #' summary(path_out_annex)
 #'
 #' @export
-
 paths <- function(formulas = NULL,
                   models = NULL,
                   models_args = NULL,
@@ -481,29 +483,31 @@ print.paths <- function(x, ...) {
 #####################################################
 # Summary method for paths objects
 #####################################################
-#' @rdname summary.paths
+#' Summarizing Output from Causal Paths Analysis
+#'
+#' @aliases print.summary.paths
 #' @export
-summary.paths <- function(x, ...){
+summary.paths <- function(object, ...){
 
-  call <- x$call
-  treat <- x$treat
-  outcome <- x$outcome
-  conditional <- x$conditional
-  mediators <- x$mediators
-  covariates <- x$covariates
-  formulas <- x$formulas
-  ps <- x$ps
-  ps_formula <- x$ps_formula
-  nobs <- nrow(x$data)
-  sims <- x$sims
-  conf.level <- x$conf.level
+  call <- object$call
+  treat <- object$treat
+  outcome <- object$outcome
+  conditional <- object$conditional
+  mediators <- object$mediators
+  covariates <- object$covariates
+  formulas <- object$formulas
+  ps <- object$ps
+  ps_formula <- object$ps_formula
+  nobs <- nrow(object$data)
+  sims <- object$sims
+  conf.level <- object$conf.level
 
-  clp <- 100*x$conf.level
+  clp <- 100*object$conf.level
 
-  estimates <- cbind(unlist(x$est),
-                     unlist(sapply(x$CIs,  function(c) c[1, ])),
-                     unlist(sapply(x$CIs,  function(c) c[2, ])),
-                     unlist(x$p))
+  estimates <- cbind(unlist(object$est),
+                     unlist(sapply(object$CIs,  function(c) c[1, ])),
+                     unlist(sapply(object$CIs,  function(c) c[2, ])),
+                     unlist(object$p))
 
   i_t1 <- c(1, grep("t1", rownames(estimates)))
   i_t2 <- c(1, grep("t2", rownames(estimates)))
@@ -512,7 +516,7 @@ summary.paths <- function(x, ...){
   estimates_t2 <- estimates[i_t2,]
 
   rownames(estimates_t1) <- rownames(estimates_t2) <- c("Total Effect", "Direct Effect",
-                           sapply(1:length(x$mediators), function(k) paste("T -> Mediator", k, "->> Y")))
+                           sapply(1:length(object$mediators), function(k) paste("T -> Mediator", k, "->> Y")))
   colnames(estimates_t1) <- colnames(estimates_t2) <- c("Estimate", paste(clp, "% CI Lower", sep=""),
                            paste(clp, "% CI Upper", sep=""), "p-value")
 
@@ -616,10 +620,33 @@ print.summary.paths <- function(x, ...) {
 #####################################################
 # Plot method for paths objects
 #####################################################
+#'
+#' Plot Method for \code{paths} Objects
+#'
+#' Plot point estimates and confidence intervals
+#' for each individual path-specific effect
+#' from a \code{paths} object.
+#'
+#' @param x object of class \code{paths} as produced by the
+#'   \code{paths} function
+#'
+#' @param mediator_names a vector of strings indicating the
+#'   labels for each mediator. Must contain as many elements
+#'   as there are mediators in the model. If not supplied,
+#'   the default labels will be constructed from the model
+#'   formulas supplied to the \code{paths} function.
+#'
+#' @param type either \code{1}, \code{2}, or \code{c(1,2)},
+#'   indicating whether the plot will display estimates obtained
+#'   using Type I, Type II, or both Type I and Type II decompsitions.
+#'   Default is to show estimates from both types.
+#'
+#'
 #' @rdname plot.paths
+#'
 #' @export
 #'
-plot.paths <- function(x, mediator_names = NULL, type = c(1,2), ...) {
+plot.paths <- function(x, mediator_names = NULL, type = c(1,2)) {
 
   if(is.null(mediator_names)){
     mediators <- sapply(x$mediators, function(m) paste(m, collapse = " + "))
@@ -681,5 +708,3 @@ plot.paths <- function(x, mediator_names = NULL, type = c(1,2), ...) {
     type_legend
 
 }
-
-
