@@ -4,7 +4,7 @@
 \alias{plot.paths}
 \title{Plot Method for \code{paths} Objects}
 \usage{
-\method{plot}{paths}(x, mediator_names = NULL, type = c(1, 2))
+\method{plot}{paths}(x, mediator_names = NULL, type = c(1, 2), ...)
 }
 \arguments{
 \item{x}{object of class \code{paths} as produced by the
@@ -20,9 +20,23 @@ formulas supplied to the \code{paths} function.}
 indicating whether the plot will display estimates obtained
 using Type I, Type II, or both Type I and Type II decompsitions.
 Default is to show estimates from both types.}
+
+\item{...}{other arguments}
+}
+\value{
+a \code{ggplot2} plot, which can be further customized
+by the user.
 }
 \description{
 Plot point estimates and confidence intervals
 for each individual path-specific effect
 from a \code{paths} object.
+}
+\seealso{
+\code{\link{paths}}, \code{\link{plot.paths}},
+  \code{\link{summary}}.
+}
+\author{
+Minh Trinh, Massachusetts Institute of Technology,
+  \email{mdtrinh@mit.edu}
 }

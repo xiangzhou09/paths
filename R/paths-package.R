@@ -10,6 +10,16 @@
 #' @import stats
 #' @import ggplot2
 #'
+#' @author
+#'   Teppei Yamamoto, Massachusetts Institute of Technology,
+#'   \email{teppei@@mit.edu};
+#'   Xiang Zhou, Harvard University,
+#'   \email{xiang_zhou@@fas.harvard.edu};
+#'   Minh Trinh, Massachusetts Institute of Technology,
+#'   \email{mdtrinh@@mit.edu}
+#'
 #' @docType package
-#' @name paths
+#' @name paths-package
+#'
+#'
 NULL
