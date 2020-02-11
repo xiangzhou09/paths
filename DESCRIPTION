@@ -1,14 +1,14 @@
 Package: paths
 Type: Package
-Title: Causal Paths Analysis
+Title: An Imputation Approach to Estimating Path-specific Causal Effects
 Version: 0.1.0
 Date: 2019-12-17
 Authors@R: c(
     person("Teppei", "Yamamoto", email = "teppei@mit.edu", role = "aut"),
     person("Xiang", "Zhou", email = "xiang_zhou@fas.harvard.edu", role = "aut"),
     person("Minh", "Trinh", email = "mdtrinh@mit.edu", role = "cre"))
-Description: A framework for tracing causal paths in the presence of multiple
-    causally independent mediators.
+Description: This package implements an imputation approach to estimating path-specific causal
+effects in causal mediation analysis. 
 Encoding: UTF-8
 LazyLoad: yes
 LazyData: yes
