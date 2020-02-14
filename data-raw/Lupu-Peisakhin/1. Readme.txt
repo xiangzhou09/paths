@@ -1,0 +1,16 @@
+Guide to Replication Files for Noam Lupu and Leonid Peisakhin, "The Legacy of Political Violence across Generations" (AJPS). 
+
+*** List of files (N=5, including this file)****
+
+** OVERVIEW file**
+1.Readme.txt: The file you are currently reading
+
+** CODEBOOK files**
+2. Lupu_Peisakhin_Crimea_codebook.pdf: Describes variables in Lupu_Peisakhin_Crimea_data.dta
+
+** DATA FILES** 
+3. Lupu_Peisakhin_Crimea_data.dta: This file contains the Crimea survey data used in the paper
+
+** ANALYSIS files (in order in which figures are produced)** 
+4. Lupu_Peisakhin_Crimea_analysis.do: Code for producing the estimates plotted in the Figures in the printed paper, as well as the results reported in the online appendix (using STATA 14.2)
+5. Lupu_Peisakhin_Crimea_figures.R: Code for producing the Figures in the paper (using R 3.3.1)

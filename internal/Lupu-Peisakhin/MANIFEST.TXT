@@ -1,0 +1,5 @@
+1. Readme.txt (text/plain) 837 bytes.
+2. Lupu_Peisakhin_Crimea_codebook.pdf (application/pdf) 107885 bytes.
+3. Lupu_Peisakhin_Crimea_data.dta (application/x-stata) 384133 bytes.
+4. Lupu_Peisakhin_Crimea_analysis.do (application/x-stata-syntax) 28743 bytes.
+5. Lupu_Peisakhin_Crimea_figures.R (type/x-r-syntax) 10603 bytes.
