@@ -9,7 +9,11 @@ The \code{paths} package provides a framework for
 tracing causal paths in the presence of multiple
 causally independent mediators. It implements the
 identification and estimation strategies outlined
+<<<<<<< HEAD
 in Zhou & Yamamoto (2020), and conducts statistical
+=======
+in Xiang & Yamamoto (2020), and conducts statistical
+>>>>>>> b54b3f7265ce5a337e1a6fd1dcf80aeccbedfa83
 inference using non-parametric bootstrap.
 }
 \author{
