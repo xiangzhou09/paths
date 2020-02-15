@@ -1,12 +1,35 @@
+#####################################################
+# Utility functions
+#####################################################
+
 utils::globalVariables(c("a", "x", "y", "X", "X0", "X1", "ipw", "treated"))
+
+`%notin%` <- Negate(`%in%`)
+
+get_formula <- function(object, class){
+
+  if(inherits(object, "lm")){
+    out <- formula(object)
+  } else if(class(object) %in% c("pbart", "wbart")){
+    x <- attr(object$varcount.mean, "names")
+    out <- as.formula(paste(y, " ~ ", paste(x, collapse= "+")), env = .GlobalEnv)
+  } else NULL
+}
+
+mframe <- function(formula, data){
+  mf <- model.frame(formula, data, na.action = NULL)
+  mf[, -1L, drop = FALSE]
+}
 
 impute <- function(model, mf){
 
   mf1_untreated <- mf[!treated, , drop = FALSE]; mf1_untreated[, a] <- 1
   mf0_treated <- mf[treated, , drop = FALSE]; mf0_treated[, a] <- 0
 
+  sink(tempfile())
   imp_y1_untreated <- pred(model, mf1_untreated)
   imp_y0_treated <- pred(model, mf0_treated)
+  sink()
 
   list(imp_y1_untreated, imp_y0_treated)
 }
@@ -29,6 +52,9 @@ pure <- function(imp, class, family){
 
   } else if(class == "glm"){
 
+    if(family[["family"]] == "binomial") family <- quasibinomial()
+    if(family[["family"]] == "poisson") family <- quasipoisson()
+
     model_imp_y1 <- glm(form_imp_y1, family = family, data = X0)
     model_imp_y0 <- glm(form_imp_y0, family = family, data = X1)
 
@@ -37,16 +63,18 @@ pure <- function(imp, class, family){
 
   } else if(class %in% c("pbart", "wbart")){
 
+    sink(tempfile())
     model_imp_y1 <- wbart(x.train = as.matrix(X0),
                           y.train = imp_y1_untreated,
                           x.test = as.matrix(X))
     model_imp_y0 <- wbart(x.train = as.matrix(X1),
                           y.train = imp_y0_treated,
                           x.test = as.matrix(X))
+    sink()
     imp_y1 <- model_imp_y1[["yhat.test.mean"]]
     imp_y0 <- model_imp_y0[["yhat.test.mean"]]
 
-  } else stop("'class' must be one of 'lm', 'glm', 'pbart', or 'wbart'")
+  } else stop("'class' must belong to 'lm', 'glm', 'pbart', or 'wbart'")
 
   imp_Ey1 <- mean(imp_y1, na.rm = TRUE)
   imp_Ey0 <- mean(imp_y0, na.rm = TRUE)
@@ -64,3 +92,26 @@ hybrid <- function(imp){
 
   c(imp_Ey1, imp_Ey0)
 }
+
+
+fit <- function(formula, class, family, newdata){
+
+  if(class=="lm"){
+    out <- lm(formula, data = newdata)
+  } else if (class=="glm"){
+    out <- glm(formula, family = family, data = newdata)
+  } else{
+    X <- as.matrix(mframe(formula, data = newdata))
+    Y <- model.frame(formula, data = newdata, na.action = NULL)[[1L]]
+    sink(tempfile())
+    if (class=="wbart"){
+      out <- wbart(x.train = X, y.train = Y)
+    } else if(class=="pbart")
+    {
+      out <- pbart(x.train = X, y.train = Y)
+    } else out <- NULL
+    sink()
+  }
+  out
+}
+

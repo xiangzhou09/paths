@@ -6,7 +6,7 @@
 \alias{pred.glm}
 \alias{pred.pbart}
 \alias{pred.wbart}
-\title{Getting predicted values}
+\title{Obtaining predicted values from fitted models}
 \usage{
 pred(object, newdata, ...)
 
@@ -19,13 +19,17 @@ pred(object, newdata, ...)
 \method{pred}{wbart}(object, newdata, ...)
 }
 \arguments{
-\item{object}{fitted model object}
+\item{object}{fitted model object, which can be of class \code{lm}, \code{glm}, \code{wbart},
+or \code{pbart}.}
 
-\item{newdata}{a data frame containing predictors}
+\item{newdata}{a data frame containing predictor variables.}
+
+\item{...}{additional arguments passed to the \code{predict} methods.}
 }
 \value{
-a vector of predicted values for \code{newdata}
+a vector of expected outcomes for \code{newdata}
 }
 \description{
-Getting predicted values from lm, glm, pbart, and wbart objects.
+Generic function that returns expected outcomes from \code{lm}, \code{glm}, \code{wbart},
+ and \code{bbart} objects with new data
 }
