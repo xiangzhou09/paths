@@ -8,22 +8,25 @@ Authors@R: c(
     person("Teppei", "Yamamoto", email = "teppei@mit.edu", role = "aut"),
     person("Xiang", "Zhou", email = "xiang_zhou@fas.harvard.edu", role = "aut"))
 Description: This package implements an imputation approach to estimating path-specific causal
-  effects in causal mediation analysis.
+  effects as detailed in Zhou and Yamamoto 2020. Statistical inference is conducted using the nonparametric
+  bootstrap.
 Encoding: UTF-8
 LazyLoad: yes
 LazyData: yes
 License: GPL (>= 2)
 Depends:
-    R (>= 3.5.0)
+    R (>= 3.6.0)
 Suggests: 
     testthat (>= 2.1.0),
     knitr,
     rmarkdown
 Imports: 
     BART,
-    ggplot2,
-    stats,
     boot,
-    parallel
+    ggplot2,
+    parallel,
+    pryr,
+    stats,
+    tidyr
 RoxygenNote: 7.0.2
 VignetteBuilder: knitr
