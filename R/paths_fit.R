@@ -66,9 +66,10 @@ paths_fit <- function(data, index = 1:nrow(data), varnames,
   # pure imputation estimator
   pure_imps <- Map(pure, imps, classes[(K+1):2L], families[(K+1):2L])
   pure_type1 <- c(imp_Ey0, vapply(pure_imps, function(x) x[1L], numeric(1L)), imp_Ey1)
-  pure_type2 <- c(imp_Ey0, vapply(pure_imps[K:1L], function(x) x[2L], numeric(1L)), imp_Ey1)
-  pure_both <- cbind(pure_type1, pure_type2)
-  pure_out[]  <- rbind(apply(pure_both, 2L, diff), imp_Ey1 - imp_Ey0)
+  pure_type2 <- c(imp_Ey1, vapply(pure_imps, function(x) x[2L], numeric(1L)), imp_Ey0)
+  pure_type1_decomp <- c(diff(pure_type1), imp_Ey1 - imp_Ey0)
+  pure_type2_decomp <- c(-diff(pure_type2), imp_Ey1 - imp_Ey0)
+  pure_out[] <- cbind(pure_type1_decomp, pure_type2_decomp)
 
   # hybrid estimator
   if(!is.null(ps_model)){
@@ -80,9 +81,10 @@ paths_fit <- function(data, index = 1:nrow(data), varnames,
     # imputation-based weighting (hybrid) estimator
     hybrid_imps <- lapply(imps, hybrid)
     hybrid_type1 <- c(imp_Ey0, vapply(hybrid_imps, function(x) x[1L], numeric(1L)), imp_Ey1)
-    hybrid_type2 <- c(imp_Ey0, vapply(hybrid_imps[K:1L], function(x) x[2L], numeric(1L)), imp_Ey1)
-    hybrid_both <- cbind(hybrid_type1, hybrid_type2)
-    hybrid_out[]  <- rbind(apply(hybrid_both, 2L, diff), imp_Ey1 - imp_Ey0)
+    hybrid_type2 <- c(imp_Ey1, vapply(hybrid_imps, function(x) x[2L], numeric(1L)), imp_Ey0)
+    hybrid_type1_decomp <- c(diff(hybrid_type1), imp_Ey1 - imp_Ey0)
+    hybrid_type2_decomp <- c(-diff(hybrid_type2), imp_Ey1 - imp_Ey0)
+    hybrid_out[] <- cbind(hybrid_type1_decomp, hybrid_type2_decomp)
   }
 
   measure <- c("pure_Type I", "pure_Type II", "hybrid_Type I", "hybrid_Type II")
