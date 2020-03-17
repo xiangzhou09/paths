@@ -8,7 +8,7 @@ Authors@R: c(
     person("Teppei", "Yamamoto", email = "teppei@mit.edu", role = "aut"),
     person("Xiang", "Zhou", email = "xiang_zhou@fas.harvard.edu", role = "aut"))
 Description: This package implements an imputation approach to estimating path-specific causal
-  effects as detailed in Zhou and Yamamoto 2020. Statistical inference is conducted using the nonparametric
+  effects as detailed in Zhou and Yamamoto (2020). Statistical inference is conducted using the nonparametric
   bootstrap.
 Encoding: UTF-8
 LazyLoad: yes

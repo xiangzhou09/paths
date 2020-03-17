@@ -48,9 +48,9 @@
 #   # mutate_at(vars(trust_g3:fear_g3, trust_g2:fear_g2, trust_g1:fear_g1), funs(na = as.numeric(is.na(.)))) %>%
 #   # mutate_at(vars(trust_g3:fear_g3, trust_g2:fear_g2, trust_g1:fear_g1), impute_mu) %>%
 #   drop_na(violence,
-#           annex
-#           # , kulak, prosoviet_pre, religiosity_pre,
-#           # trust_g3:fear_g3, trust_g2:fear_g2, trust_g1:fear_g1
+#           annex,
+#           kulak, prosoviet_pre, religiosity_pre,
+#           trust_g3:fear_g3, trust_g2:fear_g2, trust_g1:fear_g1,
 #   ) %>%
 #   mutate(violence = as.numeric(violence >= 1))
 #

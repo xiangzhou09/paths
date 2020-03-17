@@ -4,7 +4,7 @@
 \name{tatar}
 \alias{tatar}
 \title{tatar dataset}
-\format{An object of class \code{tbl_df} (inherits from \code{tbl}, \code{data.frame}) with 778 rows and 22 columns.}
+\format{An object of class \code{tbl_df} (inherits from \code{tbl}, \code{data.frame}) with 427 rows and 22 columns.}
 \usage{
 tatar
 }

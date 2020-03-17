@@ -17,8 +17,30 @@ get_formula <- function(object, class){
 }
 
 mframe <- function(formula, data){
+
   mf <- model.frame(formula, data, na.action = NULL)
-  mf[, -1L, drop = FALSE]
+  mf[, -1, drop = FALSE]
+}
+
+fit <- function(formula, class, family, newdata){
+
+  if(class=="lm"){
+    out <- lm(formula, data = newdata)
+  } else if (class=="glm"){
+    out <- glm(formula, family = family, data = newdata)
+  } else{
+    X <- as.matrix(mframe(formula, data = newdata))
+    Y <- model.frame(formula, data = newdata, na.action = NULL)[[1]]
+
+    sink(tempfile()); on.exit(sink(), add = TRUE)
+    if (class=="wbart"){
+      out <- wbart(x.train = X, y.train = Y)
+    } else if(class=="pbart")
+    {
+      out <- pbart(x.train = X, y.train = Y)
+    } else out <- NULL
+  }
+  out
 }
 
 impute <- function(model, mf){
@@ -26,18 +48,17 @@ impute <- function(model, mf){
   mf1_untreated <- mf[!treated, , drop = FALSE]; mf1_untreated[, a] <- 1
   mf0_treated <- mf[treated, , drop = FALSE]; mf0_treated[, a] <- 0
 
-  sink(tempfile())
+  sink(tempfile()); on.exit(sink(), add = TRUE)
   imp_y1_untreated <- pred(model, mf1_untreated)
   imp_y0_treated <- pred(model, mf0_treated)
-  sink()
 
   list(imp_y1_untreated, imp_y0_treated)
 }
 
 pure <- function(imp, class, family){
 
-  imp_y1_untreated <- imp[[1L]]
-  imp_y0_treated <- imp[[2L]]
+  imp_y1_untreated <- imp[[1]]
+  imp_y0_treated <- imp[[2]]
 
   form_imp_y1 <- as.formula(paste("imp_y1_untreated", " ~ ", paste(x, collapse= "+")))
   form_imp_y0 <- as.formula(paste("imp_y0_treated", " ~ ", paste(x, collapse= "+")))
@@ -84,34 +105,12 @@ pure <- function(imp, class, family){
 
 hybrid <- function(imp){
 
-  imp_y1_untreated <- imp[[1L]]
-  imp_y0_treated <- imp[[2L]]
+  imp_y1_untreated <- imp[[1]]
+  imp_y0_treated <- imp[[2]]
 
   imp_Ey1 <- sum(imp_y1_untreated * ipw[!treated], na.rm = TRUE)/sum(ipw[!treated], na.rm = TRUE)
   imp_Ey0 <- sum(imp_y0_treated * ipw[treated], na.rm = TRUE)/sum(ipw[treated], na.rm = TRUE)
 
   c(imp_Ey1, imp_Ey0)
-}
-
-
-fit <- function(formula, class, family, newdata){
-
-  if(class=="lm"){
-    out <- lm(formula, data = newdata)
-  } else if (class=="glm"){
-    out <- glm(formula, family = family, data = newdata)
-  } else{
-    X <- as.matrix(mframe(formula, data = newdata))
-    Y <- model.frame(formula, data = newdata, na.action = NULL)[[1L]]
-    sink(tempfile())
-    if (class=="wbart"){
-      out <- wbart(x.train = X, y.train = Y)
-    } else if(class=="pbart")
-    {
-      out <- pbart(x.train = X, y.train = Y)
-    } else out <- NULL
-    sink()
-  }
-  out
 }
 

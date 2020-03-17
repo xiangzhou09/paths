@@ -21,10 +21,10 @@ print.paths <- function(x, ...) {
   cat("Outcome:", x$varnames$y, "\n\n")
 
   cat("Outcome model: ")
-  print(x$formulas[[1L]])
+  print(x$formulas[[1]])
   cat("\n")
 
-  K <- length(x$varnames) - 3L
+  K <- length(x$varnames) - 3
 
   for(i in 1:K) {
     cat("Mediator ", i, ": ", paste0(x$varnames[[i+2]], collapse = " + "), "\n")

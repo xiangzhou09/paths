@@ -11,13 +11,13 @@ paths_fit <- function(data, index = 1:nrow(data), varnames,
   environment(get_formula) <- environment(fit) <- environment(impute) <-
     environment(pure) <- environment(hybrid) <- environment()
 
-  # fit models
+  # fit K+1 outcome models
   fit_partial <- pryr::partial(fit, newdata = newdata)
   models <- Map(fit_partial, formulas, classes, families)
   cat(".")
 
   # fit ps_model
-  if (is.null(ps_formula) | is.null(ps_class) | is.null(ps_family)){
+  if (is.null(ps_formula) || is.null(ps_class) || is.null(ps_family)){
     ps_model <- NULL
   } else ps_model <- fit_partial(ps_formula, ps_class, ps_family)
 
@@ -37,7 +37,7 @@ paths_fit <- function(data, index = 1:nrow(data), varnames,
   }
 
   # use K to denote the number of mediators
-  K <- length(models) - 1L
+  K <- length(models) - 1
 
   # extract model frames
   mfs <- lapply(formulas, mframe, data = newdata)
@@ -48,25 +48,27 @@ paths_fit <- function(data, index = 1:nrow(data), varnames,
   X1 <- X[treated, , drop = FALSE]
 
   # imputation for the baseline model
-  A0 <- A1 <- mfs[[1L]]
+  A0 <- A1 <- mfs[[1]]
   A0[, a] <- 0; A1[, a] <- 1
+
   sink(tempfile())
-  imp_y0 <- pred(object = models[[1L]], newdata = A0)
-  imp_y1 <- pred(object = models[[1L]], newdata = A1)
+  imp_y0 <- pred(object = models[[1]], newdata = A0)
+  imp_y1 <- pred(object = models[[1]], newdata = A1)
   sink()
+
   imp_Ey0 <- mean(imp_y0, na.rm = TRUE)
   imp_Ey1 <- mean(imp_y1, na.rm = TRUE)
 
   # imputation for the outcome models
-  imps <- Map(impute, models[(K+1):2L], mfs[(K+1):2L])
+  imps <- Map(impute, models[(K+1):2], mfs[(K+1):2])
 
   # output matrices
-  pure_out <- hybrid_out <- matrix(NA, nrow = K+2, ncol = 2L)
+  pure_out <- hybrid_out <- matrix(NA, nrow = K+2, ncol = 2)
 
   # pure imputation estimator
-  pure_imps <- Map(pure, imps, classes[(K+1):2L], families[(K+1):2L])
-  pure_type1 <- c(imp_Ey0, vapply(pure_imps, function(x) x[1L], numeric(1L)), imp_Ey1)
-  pure_type2 <- c(imp_Ey1, vapply(pure_imps, function(x) x[2L], numeric(1L)), imp_Ey0)
+  pure_imps <- Map(pure, imps, classes[(K+1):2], families[(K+1):2])
+  pure_type1 <- c(imp_Ey0, vapply(pure_imps, `[[`, numeric(1), 1), imp_Ey1)
+  pure_type2 <- c(imp_Ey1, vapply(pure_imps, `[[`, numeric(1), 2), imp_Ey0)
   pure_type1_decomp <- c(diff(pure_type1), imp_Ey1 - imp_Ey0)
   pure_type2_decomp <- c(-diff(pure_type2), imp_Ey1 - imp_Ey0)
   pure_out[] <- cbind(pure_type1_decomp, pure_type2_decomp)
@@ -80,8 +82,8 @@ paths_fit <- function(data, index = 1:nrow(data), varnames,
 
     # imputation-based weighting (hybrid) estimator
     hybrid_imps <- lapply(imps, hybrid)
-    hybrid_type1 <- c(imp_Ey0, vapply(hybrid_imps, function(x) x[1L], numeric(1L)), imp_Ey1)
-    hybrid_type2 <- c(imp_Ey1, vapply(hybrid_imps, function(x) x[2L], numeric(1L)), imp_Ey0)
+    hybrid_type1 <- c(imp_Ey0, vapply(hybrid_imps, function(x) x[[1]], numeric(1)), imp_Ey1)
+    hybrid_type2 <- c(imp_Ey1, vapply(hybrid_imps, function(x) x[[2]], numeric(1)), imp_Ey0)
     hybrid_type1_decomp <- c(diff(hybrid_type1), imp_Ey1 - imp_Ey0)
     hybrid_type2_decomp <- c(-diff(hybrid_type2), imp_Ey1 - imp_Ey0)
     hybrid_out[] <- cbind(hybrid_type1_decomp, hybrid_type2_decomp)

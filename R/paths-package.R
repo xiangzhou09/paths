@@ -1,25 +1,17 @@
-#' paths: A package for causal paths analysis.
+#' paths: An Imputation Approach to Estimating Path-specific Causal Effects
 #'
-#' The \code{paths} package provides a framework for
-#' tracing causal paths in the presence of multiple
-#' causally independent mediators. It implements the
-#' identification and estimation strategies outlined
-#' in Zhou & Yamamoto (2020), and conducts statistical
-#' inference using non-parametric bootstrap.
-#'
-#' @import stats
-#' @import ggplot2
+#' This package implements an imputation approach to estimating path-specific causal
+#' effects as detailed in Zhou and Yamamoto (2020). Statistical inference is conducted using the nonparametric
+#' bootstrap.
 #'
 #' @author
+#'   Minh Trinh, Massachusetts Institute of Technology,
+#'   \email{mdtrinh@@mit.edu}
 #'   Teppei Yamamoto, Massachusetts Institute of Technology,
 #'   \email{teppei@@mit.edu};
 #'   Xiang Zhou, Harvard University,
 #'   \email{xiang_zhou@@fas.harvard.edu};
-#'   Minh Trinh, Massachusetts Institute of Technology,
-#'   \email{mdtrinh@@mit.edu}
 #'
 #' @docType package
-#' @name paths-package
-#'
-#'
+#' @name paths
 NULL
