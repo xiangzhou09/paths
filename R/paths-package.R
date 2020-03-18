@@ -13,5 +13,6 @@
 #'   \email{xiang_zhou@@fas.harvard.edu};
 #'
 #' @docType package
-#' @name paths
+#' @name paths-package
+#' @references Zhou, Xiang and Teppei Yamamoto. 2020. "\href{https://osf.io/2rx6p}{Tracing Causal Paths from Experimental and Observational Data}".
 NULL

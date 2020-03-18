@@ -2,8 +2,7 @@
 # Print method for paths objects
 #####################################################
 
-#' @param x an object of class \code{paths} as generated
-#' by the \code{\link{paths}} function
+#' @param x a fitted model object returned by the \code{\link{paths}} function.
 #' @rdname paths
 #' @export
 print.paths <- function(x, ...) {

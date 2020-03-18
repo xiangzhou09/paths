@@ -17,8 +17,8 @@ License: GPL (>= 2)
 Depends:
     R (>= 3.6.0)
 Suggests: 
-    testthat (>= 2.1.0),
     knitr,
+    metR,
     rmarkdown
 Imports: 
     BART,

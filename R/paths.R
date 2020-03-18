@@ -60,35 +60,46 @@
 #' @importFrom BART pbart
 #' @importFrom BART wbart
 #' @import stats
+#' @export
+#'
+#' @references Zhou, Xiang and Teppei Yamamoto. 2020. "\href{https://osf.io/2rx6p}{Tracing Causal Paths from Experimental and Observational Data}".
 #'
 #' @examples
 #'
 #' data(tatar)
 #'
-#' # outcome models being GLM
+#' ####################################################
+#' # Causal Paths Analysis using GLM
+#' ####################################################
 #'
+#' # outcome model formulas
 #' formula_m0 <- annex ~ kulak + prosoviet_pre + religiosity_pre + house_pre +
 #'   land_pre + orchard_pre + animals_pre + carriage_pre + otherprop_pre + violence
 #' formula_m1 <- update(formula_m0,    ~ . + trust_g1 + victim_g1 + fear_g1)
 #' formula_m2 <- update(formula_m1,    ~ . + trust_g2 + victim_g2 + fear_g2)
 #' formula_m3 <- update(formula_m2,    ~ . + trust_g3 + victim_g3 + fear_g3)
 #'
+#' # propensity score model formula
 #' formula_ps <- violence ~ kulak + prosoviet_pre + religiosity_pre + house_pre +
 #'   land_pre + orchard_pre + animals_pre + carriage_pre + otherprop_pre
 #'
+#' # outcome models
 #' glm_m0 <- glm(formula_m0, family = binomial("logit"), data = tatar)
 #' glm_m1 <- glm(formula_m1, family = binomial("logit"), data = tatar)
 #' glm_m2 <- glm(formula_m2, family = binomial("logit"), data = tatar)
 #' glm_m3 <- glm(formula_m3, family = binomial("logit"), data = tatar)
-#'
-#' glm_ps <- glm(formula_ps, family = binomial("logit"), data = tatar)
-#'
 #' glm_ymodels <- list(glm_m0, glm_m1, glm_m2, glm_m3)
 #'
-#' out_glm <- paths(a = "violence", y = "annex", glm_ymodels, ps_model = glm_ps, data = tatar,
+#' # propensity score model
+#' glm_ps <- glm(formula_ps, family = binomial("logit"), data = tatar)
+#'
+#' # causal paths analysis using glm
+#' paths_glm <- paths(a = "violence", y = "annex", glm_ymodels, ps_model = glm_ps, data = tatar,
 #'   parallel = "multicore", ncpus = 4, nboot = 100)
 #'
-#' # outcome models being pbart
+#' ####################################################
+#' # Causal Paths Analysis using BART
+#' ####################################################
 #'
 #' x <- c("kulak", "prosoviet_pre", "religiosity_pre", "house_pre", "land_pre", "orchard_pre",
 #'   "animals_pre", "carriage_pre", "otherprop_pre")
@@ -98,24 +109,23 @@
 #' m3 <- c("trust_g3", "victim_g3", "fear_g3")
 #' y <- "annex"
 #'
+#' # constructing design matrices for fitting pbart models
 #' Y <- tatar[[y]]
 #' M0 <- as.matrix(tatar[, c(x, a), drop = FALSE])
 #' M1 <- as.matrix(tatar[, c(x, a, m1), drop = FALSE])
 #' M2 <- as.matrix(tatar[, c(x, a, m1, m2), drop = FALSE])
 #' M3 <- as.matrix(tatar[, c(x, a, m1, m2, m3), drop = FALSE])
 #'
+#' # outcome models
 #' pbart_m0 <- BART::pbart(x.train = M0, y.train = Y)
 #' pbart_m1 <- BART::pbart(x.train = M1, y.train = Y)
 #' pbart_m2 <- BART::pbart(x.train = M2, y.train = Y)
 #' pbart_m3 <- BART::pbart(x.train = M3, y.train = Y)
-#'
 #' pbart_ymodels <- list(pbart_m0, pbart_m1, pbart_m2, pbart_m3)
 #'
-#' out_pbart <- paths(a, y, pbart_ymodels, ps_model = glm_ps, data = tatar,
-#'   parallel = "multicore", ncpus = 4, nboot = 5)
-#'
-#' @export
-
+#' # causal paths analysis using pbart
+#' pbart_glm <- paths(a, y, pbart_ymodels, ps_model = glm_ps, data = tatar,
+#'   parallel = "multicore", ncpus = 4, nboot = 4)
 paths <- function(a, y, models, ps_model = NULL, nboot = 500, conf_level = 0.95, data, ...){
 
   # Get function call
@@ -203,14 +213,13 @@ paths <- function(a, y, models, ps_model = NULL, nboot = 500, conf_level = 0.95,
   high <- 1 - low
 
   # Bootstrap confidence intervals
+  boot_se <- apply(boot_out$t, 2, sd, na.rm = TRUE)
   boot_CI <- t(apply(boot_out$t, 2, quantile, c(low, high), na.rm = TRUE))
   colnames(boot_CI) <- c("lower", "upper")
 
-  # Estimates of Path-specific and total effects
-  pse <- data.frame('names' = names(boot_out$t0),
-                    'estimate' = round(boot_out$t0, 3),
-                    round(boot_CI, 3),
-                    row.names = NULL, check.names = FALSE)
+  # Estimates of path-specific and total effects
+  pse <- data.frame('names' = names(boot_out$t0), 'estimate' = boot_out$t0,
+                    'se' = boot_se, boot_CI, row.names = NULL, check.names = FALSE)
   pse <- tidyr::separate(pse, names, into = c("estimator", "decomposition", "estimand"), sep = "_")
   pse_pure <- pse[pse$estimator == "pure", , drop = FALSE]
   pse_hybrid <- pse[pse$estimator == "hybrid", , drop = FALSE]

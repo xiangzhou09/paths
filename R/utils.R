@@ -6,6 +6,9 @@ utils::globalVariables(c("a", "x", "y", "X", "X0", "X1", "ipw", "treated"))
 
 `%notin%` <- Negate(`%in%`)
 
+# logical or infix function
+`%||%` <- function(a, b) if (!is.null(a)) a else b
+
 get_formula <- function(object, class){
 
   if(inherits(object, "lm")){
