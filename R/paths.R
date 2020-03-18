@@ -18,11 +18,13 @@
 #'
 #' @param y a character string indicating the name of the outcome variable.
 #'
+#' @param m a list of \eqn{K} character vectors indicating the names of the mediators \eqn{M_1,\ldots, M_K}.
+#'
 #' @param models a list of \eqn{K+1} fitted model objects describing how the outcome depends on treatment,
 #'   pretreatment confounders, and varying sets of mediators, where \eqn{K} is the number of mediators.
 #'   \itemize{
-#'   \item the first element is a baseline model of the outcome conditional on treatment and pretreatment
-#'    confounders.
+#'   \item the first element is a baseline model of the outcome conditional on treatment and potential
+#'    pretreatment confounders.
 #'   \item the \eqn{k}th element is an outcome model conditional on treatment, pretreatment confounders,
 #'   and mediators \eqn{M_1,\ldots, M_{k-1}}.
 #'   \item the last element is an outcome model conditional on treatment, pretreatment confounders,
@@ -68,6 +70,16 @@
 #'
 #' data(tatar)
 #'
+#' x <- c("kulak", "prosoviet_pre", "religiosity_pre", "house_pre", "land_pre", "orchard_pre",
+#'   "animals_pre", "carriage_pre", "otherprop_pre")
+#' a <- "violence"
+#' y <- "annex"
+#'
+#' m1 <- c("trust_g1", "victim_g1", "fear_g1")
+#' m2 <- c("trust_g2", "victim_g2", "fear_g2")
+#' m3 <- c("trust_g3", "victim_g3", "fear_g3")
+#' mediators <- list(m1, m2, m3)
+#'
 #' ####################################################
 #' # Causal Paths Analysis using GLM
 #' ####################################################
@@ -94,20 +106,13 @@
 #' glm_ps <- glm(formula_ps, family = binomial("logit"), data = tatar)
 #'
 #' # causal paths analysis using glm
-#' paths_glm <- paths(a = "violence", y = "annex", glm_ymodels, ps_model = glm_ps, data = tatar,
+#' paths_glm <- paths(a = "violence", y = "annex", m = mediators,
+#'   glm_ymodels, ps_model = glm_ps, data = tatar,
 #'   parallel = "multicore", ncpus = 4, nboot = 100)
 #'
 #' ####################################################
 #' # Causal Paths Analysis using BART
 #' ####################################################
-#'
-#' x <- c("kulak", "prosoviet_pre", "religiosity_pre", "house_pre", "land_pre", "orchard_pre",
-#'   "animals_pre", "carriage_pre", "otherprop_pre")
-#' a <- "violence"
-#' m1 <- c("trust_g1", "victim_g1", "fear_g1")
-#' m2 <- c("trust_g2", "victim_g2", "fear_g2")
-#' m3 <- c("trust_g3", "victim_g3", "fear_g3")
-#' y <- "annex"
 #'
 #' # constructing design matrices for fitting pbart models
 #' Y <- tatar[[y]]
@@ -124,9 +129,10 @@
 #' pbart_ymodels <- list(pbart_m0, pbart_m1, pbart_m2, pbart_m3)
 #'
 #' # causal paths analysis using pbart
-#' pbart_glm <- paths(a, y, pbart_ymodels, ps_model = glm_ps, data = tatar,
+#' paths_pbart <- paths(a = "violence", y = "annex", m = mediators,
+#'   pbart_ymodels, ps_model = glm_ps, data = tatar,
 #'   parallel = "multicore", ncpus = 4, nboot = 4)
-paths <- function(a, y, models, ps_model = NULL, nboot = 500, conf_level = 0.95, data, ...){
+paths <- function(a, y, m, models, ps_model = NULL, nboot = 500, conf_level = 0.95, data, ...){
 
   # Get function call
   cl <- match.call()
@@ -167,7 +173,7 @@ paths <- function(a, y, models, ps_model = NULL, nboot = 500, conf_level = 0.95,
 
   # Extract covariate names
   vnames <- lapply(formulas, all.vars)
-  x <- setdiff(vnames[[1]], c(a, y))
+  x <- setdiff(vnames[[K+1]], c(a, y, unlist(m)))
 
   # Store all variable names in 'varnames'
   varnames <- vector("list", K + 3)

@@ -56,6 +56,20 @@ the \eqn{\gamma} and \eqn{\eta} parameters.
 
 data(tatar)
 
+x <- c("kulak", "prosoviet_pre", "religiosity_pre", "house_pre", "land_pre", "orchard_pre",
+  "animals_pre", "carriage_pre", "otherprop_pre")
+a <- "violence"
+y <- "annex"
+
+m1 <- c("trust_g1", "victim_g1", "fear_g1")
+m2 <- c("trust_g2", "victim_g2", "fear_g2")
+m3 <- c("trust_g3", "victim_g3", "fear_g3")
+mediators <- list(m1, m2, m3)
+
+####################################################
+# Causal Paths Analysis using GLM
+####################################################
+
 # outcome model formulas
 formula_m0 <- annex ~ kulak + prosoviet_pre + religiosity_pre + house_pre +
   land_pre + orchard_pre + animals_pre + carriage_pre + otherprop_pre + violence
@@ -77,8 +91,9 @@ glm_ymodels <- list(glm_m0, glm_m1, glm_m2, glm_m3)
 # propensity score model
 glm_ps <- glm(formula_ps, family = binomial("logit"), data = tatar)
 
-# causal paths analysis
-paths_glm <- paths(a = "violence", y = "annex", glm_ymodels, ps_model = glm_ps, data = tatar,
+# causal paths analysis using glm
+paths_glm <- paths(a = "violence", y = "annex", m = mediators,
+  glm_ymodels, ps_model = glm_ps, data = tatar,
   parallel = "multicore", ncpus = 4, nboot = 100)
 
 # sensitivity analysis
