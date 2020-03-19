@@ -142,6 +142,8 @@ paths <- function(a, y, m, models, ps_model = NULL, nboot = 500, conf_level = 0.
     stop("'a' must be a character string of length one.")
   if(missing(y) || !is.character(y) || length(y) > 1)
     stop("'y' must be a character string of length one.")
+  if(missing(m) || !is.list(m) || any(vapply(m, typeof, character(1)) != "character"))
+    stop("'m' must be a list of character vectors.")
   if(missing(models) || !inherits(models, "list") || length(models) < 2)
     stop("'models' must be a list with at least two elements.")
   if(missing(data) || !is.data.frame(data) || ncol(data) < 3)
