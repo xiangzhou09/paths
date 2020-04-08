@@ -8,6 +8,7 @@ library(BART)
 if(sink.number()>0) invisible(replicate(sink.number(), sink()))
 
 tatar <- readRDS("internal/tatar.rds")
+tatar <- as.data.frame(lapply(tatar, unclass))
 
 # variable names
 x <- c("kulak", "prosoviet_pre", "religiosity_pre", "house_pre", "land_pre",
@@ -33,12 +34,17 @@ pbart_m2 <- pbart(x.train = M2, y.train = Y)
 pbart_m3 <- pbart(x.train = M3, y.train = Y)
 pbart_ymodels <- list(pbart_m0, pbart_m1, pbart_m2, pbart_m3)
 
-# models = wbart_ymodels; ps_model = NULL;
+formula_ps <- violence ~ kulak + prosoviet_pre + religiosity_pre + house_pre +
+  land_pre + orchard_pre + animals_pre + carriage_pre + otherprop_pre
+gbm_ps <- twang::ps(formula_ps, data = tatar,
+                    n.trees = 2000, stop.method = "es.mean")
+
+# models = pbart_ymodels; ps_model = gbm_ps;
 # data = tatar; nboot = 4; conf_level = 0.95
 
 # causal paths analysis
-tatar_paths <- paths(a, y, m, pbart_ymodels, ps_model = NULL, data = tatar,
-                     parallel = "multicore", ncpus = 4, nboot = 5)
+tatar_paths <- paths(a, y, m, pbart_ymodels, ps_model = gbm_ps, data = tatar,
+                     parallel = "multicore", ncpus = 4, nboot = 1000)
 
 # sensitivity analysis
 tatar_sens <- sens(tatar_paths, confounded = "M1", estimand = "via M1",
@@ -57,4 +63,4 @@ tatar_sens_plot <- ggplot(data = tatar_sens$adjusted, aes(eta_k, gamma_k)) +
   scale_x_continuous(position = "top") +
   theme_minimal(base_size = 14)
 
-save.image("internal/tatar_paths.RData")
+save.image("internal/tatar_paths_v2.RData")

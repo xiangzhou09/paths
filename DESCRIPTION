@@ -27,6 +27,7 @@ Imports:
     parallel,
     pryr,
     stats,
+    twang,
     tidyr
 RoxygenNote: 7.0.2
 VignetteBuilder: knitr

@@ -4,6 +4,7 @@
 \alias{pred}
 \alias{pred.lm}
 \alias{pred.glm}
+\alias{pred.gbm}
 \alias{pred.pbart}
 \alias{pred.wbart}
 \title{Obtaining predicted values from fitted models}
@@ -13,6 +14,8 @@ pred(object, newdata, ...)
 \method{pred}{lm}(object, newdata, ...)
 
 \method{pred}{glm}(object, newdata, ...)
+
+\method{pred}{gbm}(object, newdata, method = "OOB", ...)
 
 \method{pred}{pbart}(object, newdata, ...)
 

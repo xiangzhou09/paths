@@ -38,12 +38,12 @@ are currently supported.}
   and all of the mediators, i.e., \eqn{M_1,\ldots, M_K}.
   }
 
-  The fitted model objects can be of type \code{\link{lm}}, \code{\link{glm}}, \code{\link[BART]{wbart}},
-  or \code{\link[BART]{pbart}}.}
+  The fitted model objects can be of type \code{\link{lm}}, \code{\link{glm}}, \code{\link[gbm]{gbm}},
+  \code{\link[BART]{wbart}}, or \code{\link[BART]{pbart}}.}
 
-\item{ps_model}{an optional propensity score model of the treatment. It can be of type \code{\link{glm}}
-or \code{\link{BART}{pbart}}. When it is provided, the imputation-based weighting estimator is also used
-to compute path-specific causal effects.}
+\item{ps_model}{an optional propensity score model of the treatment. It can be of type \code{\link{glm}},
+\code{\link[gbm]{gbm}}, \code{\link[twang]{ps}}, or \code{\link{BART}{pbart}}. When it is provided,
+the imputation-based weighting estimator is also used to compute path-specific causal effects.}
 
 \item{nboot}{number of bootstrap iterations for estimating confidence intervals. Default is 500.}
 
@@ -66,6 +66,11 @@ An object of class \code{paths}, which is a list containing the
     based on the imputation-based weighting estimator.}
   \item{varnames}{a list of character strings indicating the names of the pretreatment confounders (\eqn{X}),
   treatment(\eqn{A}), mediators (\eqn{M_1, \ldots, M_K}), and outcome (\eqn{Y}).}
+  \item{formulas}{formulas for the outcome models.}
+  \item{ps_formula}{formula for the propensity model.}
+  \item{nboot}{number of bootstrap iterations.}
+  \item{conf_level}{confidence level for confidence intervals.}
+  \item{data}{the original data.}
   \item{call}{the original call to the \code{paths} function.}
   }
 }

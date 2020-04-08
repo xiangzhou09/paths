@@ -34,7 +34,7 @@ wbart_ymodels <- list(lm_m0, wbart_m1, wbart_m2)
 
 # causal paths analysis
 welfare_paths <- paths(a, y, m, models = wbart_ymodels, data = welfare,
-                       parallel = "multicore", ncpus = 4, nboot = 5)
+                       parallel = "multicore", ncpus = 4, nboot = 1000)
 
 # sensitivity analysis
 welfare_sens <- sens(welfare_paths, confounded = "M1", estimand = "direct",

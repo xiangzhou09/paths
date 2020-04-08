@@ -31,12 +31,12 @@
 #'   and all of the mediators, i.e., \eqn{M_1,\ldots, M_K}.
 #'   }
 #'
-#'   The fitted model objects can be of type \code{\link{lm}}, \code{\link{glm}}, \code{\link[BART]{wbart}},
-#'   or \code{\link[BART]{pbart}}.
+#'   The fitted model objects can be of type \code{\link{lm}}, \code{\link{glm}}, \code{\link[gbm]{gbm}},
+#'   \code{\link[BART]{wbart}}, or \code{\link[BART]{pbart}}.
 #'
-#' @param ps_model an optional propensity score model of the treatment. It can be of type \code{\link{glm}}
-#'   or \code{\link{BART}{pbart}}. When it is provided, the imputation-based weighting estimator is also used
-#'   to compute path-specific causal effects.
+#' @param ps_model an optional propensity score model of the treatment. It can be of type \code{\link{glm}},
+#'   \code{\link[gbm]{gbm}}, \code{\link[twang]{ps}}, or \code{\link{BART}{pbart}}. When it is provided,
+#'   the imputation-based weighting estimator is also used to compute path-specific causal effects.
 #'
 #' @param nboot number of bootstrap iterations for estimating confidence intervals. Default is 500.
 #'
@@ -56,9 +56,16 @@
 #'     based on the imputation-based weighting estimator.}
 #'   \item{varnames}{a list of character strings indicating the names of the pretreatment confounders (\eqn{X}),
 #'   treatment(\eqn{A}), mediators (\eqn{M_1, \ldots, M_K}), and outcome (\eqn{Y}).}
+#'   \item{formulas}{formulas for the outcome models.}
+#'   \item{ps_formula}{formula for the propensity model.}
+#'   \item{nboot}{number of bootstrap iterations.}
+#'   \item{conf_level}{confidence level for confidence intervals.}
+#'   \item{data}{the original data.}
 #'   \item{call}{the original call to the \code{paths} function.}
 #'   }
 #'
+#' @importFrom gbm gbm
+#' @importFrom twang ps
 #' @importFrom BART pbart
 #' @importFrom BART wbart
 #' @import stats
@@ -157,21 +164,21 @@ paths <- function(a, y, m, models, ps_model = NULL, nboot = 500, conf_level = 0.
 
   # Proportion of units treated
   prop_treated <- mean(treated)
-  if(prop_treated==0 || prop_treated==1)
+  if(prop_treated==0 || prop_treated==1){
     stop("There must be both treated and untreated units.")
+  }
 
   # Number of mediators
-  K <- length(models) - 1
+  K <- length(m)
 
-  # Extract classes and families
-  classes <- vapply(models, function(m) class(m)[[1]], character(1))
-  if(any(classes %notin% c("lm", "glm", "wbart", "pbart")))
-    stop("'models' must belong to class 'lm', 'glm', 'wbart', or 'pbart'")
-  families <- lapply(models, function(m) m[["family"]])
-
-  # Extract formulas
+  # Extract classes, families, args, and formulas
+  classes <- vapply(models, function(mod) class(mod)[[1]], character(1))
+  if(any(classes %notin% c("lm", "glm", "gbm", "wbart", "pbart"))){
+    stop("'models' must belong to class 'lm', 'glm', 'gbm', 'wbart', or 'pbart'")
+  }
+  families <- lapply(models, function(mod) mod[["family"]])
+  args <- Map(get_args, models, classes)
   formulas <- Map(get_formula, models, classes)
-  # mfs <- lapply(formulas, mframe, data = data)
 
   # Extract covariate names
   vnames <- lapply(formulas, all.vars)
@@ -186,20 +193,23 @@ paths <- function(a, y, m, models, ps_model = NULL, nboot = 500, conf_level = 0.
   for (k in seq(1, K)) varnames[[k+2]] <- setdiff(vnames[[k+1]], vnames[[k]])
 
   # Check if all variables are in 'data'
-  if(any(vnames[[K+1]] %notin% names(data)))
+  if(any(vnames[[K+1]] %notin% names(data))){
     stop("all variables must be in 'data'.")
+  }
 
-  # Extract propensity score model class, family, and formula
+  # Extract propensity score model class, formula, and other args
   if(!is.null(ps_model)){
 
     # check ps model
     ps_class <- class(ps_model)[[1]]
-    if(ps_class %notin% c("glm", "pbart"))
-      stop("'ps_model' must belong to class 'glm' or 'pbart'.")
-
+    if(ps_class %notin% c("glm", "gbm", "ps", "pbart")){
+      stop("'ps_model' must belong to class 'glm', 'gbm', 'ps', or 'pbart'.")
+    }
     ps_family <- ps_model[["family"]]
+    ps_args <- get_args(ps_model, ps_class)
     ps_formula <- get_formula(ps_model, ps_class)
-  } else ps_formula <- ps_class <- ps_family <- NULL
+
+  } else ps_args <- ps_formula <- ps_family <- ps_class <- NULL
 
   # Bootstrap to produce point estimates and confidence intervals
   boot_out <- boot::boot(data = data,
@@ -210,9 +220,11 @@ paths <- function(a, y, m, models, ps_model = NULL, nboot = 500, conf_level = 0.
                          formulas = formulas,
                          classes = classes,
                          families = families,
+                         args = args,
                          ps_formula = ps_formula,
                          ps_class = ps_class,
                          ps_family = ps_family,
+                         ps_args = ps_args,
                          ...)
   if(sink.number()>0) invisible(replicate(sink.number(), sink()))
 
@@ -236,12 +248,14 @@ paths <- function(a, y, m, models, ps_model = NULL, nboot = 500, conf_level = 0.
   out <- list(pure = pse_pure,
               hybrid = pse_hybrid,
               varnames = varnames,
+              # args = args,
               formulas = formulas,
-              classes = classes,
-              families = families,
+              # classes = classes,
+              # families = families,
+              # ps_args = ps_args,
               ps_formula = ps_formula,
-              ps_class = ps_class,
-              ps_family = ps_family,
+              # ps_class = ps_class,
+              # ps_family = ps_family,
               nboot = nboot,
               conf_level = conf_level,
               data = data,

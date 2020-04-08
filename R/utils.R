@@ -2,49 +2,61 @@
 # Utility functions
 #####################################################
 
-utils::globalVariables(c("a", "x", "y", "X", "X0", "X1", "ipw", "treated"))
+utils::globalVariables(c("a", "x", "y", "X", "X0", "X1",
+                         "ipw", "treated"))
 
 `%notin%` <- Negate(`%in%`)
 
 # logical or infix function
 `%||%` <- function(a, b) if (!is.null(a)) a else b
 
-get_formula <- function(object, class){
-
-  if(inherits(object, "lm")){
-    out <- formula(object)
-  } else if(class(object) %in% c("pbart", "wbart")){
-    x <- attr(object$varcount.mean, "names")
-    out <- as.formula(paste(y, " ~ ", paste(x, collapse= "+")), env = .GlobalEnv)
-  } else NULL
+# get args (except for pbart and wbart)
+get_args <- function(object, class){
+  if(class %in% c("lm", "glm", "gbm")){
+    args <- object$call
+    args[[1]] <- NULL
+  } else if(class == "ps"){
+    args <- object$parameters
+    args[[1]] <- NULL
+  } else args <- NULL
+  as.list(args)
 }
 
+# get formula from a fitted object and its class
+get_formula <- function(object, class){
+
+  if(class %in% c("lm", "glm", "gbm", "ps")){
+    form <- eval(get_args(object, class)[["formula"]])
+  } else if(class %in% c("pbart", "wbart")){
+    x <- attr(object$varcount.mean, "names")
+    form <- as.formula(paste(y, " ~ ", paste(x, collapse= "+")))
+  } else return(NULL)
+  environment(form) <- parent.frame()
+  form
+}
+
+# get model frame except Y from formula and data
 mframe <- function(formula, data){
 
   mf <- model.frame(formula, data, na.action = NULL)
   mf[, -1, drop = FALSE]
 }
 
-fit <- function(formula, class, family, newdata){
-
-  if(class=="lm"){
-    out <- lm(formula, data = newdata)
-  } else if (class=="glm"){
-    out <- glm(formula, family = family, data = newdata)
-  } else{
+# fit a model given class, args, and newdata
+fit <- function(class, formula, args, newdata){
+  if(class %in% c("pbart", "wbart")){
     X <- as.matrix(mframe(formula, data = newdata))
     Y <- model.frame(formula, data = newdata, na.action = NULL)[[1]]
-
+    args <- list(x.train = X, y.train = Y)
     sink(tempfile()); on.exit(sink(), add = TRUE)
-    if (class=="wbart"){
-      out <- wbart(x.train = X, y.train = Y)
-    } else if(class=="pbart")
-    {
-      out <- pbart(x.train = X, y.train = Y)
-    } else out <- NULL
+    do.call(get(class), args)
+  } else {
+    args$data <- newdata
+    sink(tempfile()); on.exit(sink(), add = TRUE)
+    do.call(get(class), args)
   }
-  out
 }
+
 
 impute <- function(model, mf){
 
@@ -58,47 +70,54 @@ impute <- function(model, mf){
   list(imp_y1_untreated, imp_y0_treated)
 }
 
-pure <- function(imp, class, family){
+pure <- function(imp, class, args, family){
 
   imp_y1_untreated <- imp[[1]]
   imp_y0_treated <- imp[[2]]
 
-  form_imp_y1 <- as.formula(paste("imp_y1_untreated", " ~ ", paste(x, collapse= "+")))
-  form_imp_y0 <- as.formula(paste("imp_y0_treated", " ~ ", paste(x, collapse= "+")))
+  if(class %in% c("pbart", "wbart")){
 
-  if(class == "lm"){
+    args_imp_y1 <- list(x.train = as.matrix(X0),
+                        y.train = imp_y1_untreated,
+                        x.test = as.matrix(X))
+    args_imp_y0 <- list(x.train = as.matrix(X1),
+                        y.train = imp_y0_treated,
+                        x.test = as.matrix(X))
 
-    model_imp_y1 <- lm(form_imp_y1, data = X0)
-    model_imp_y0 <- lm(form_imp_y0, data = X1)
+    sink(tempfile()); on.exit(sink(), add = TRUE)
+    model_imp_y1 <- do.call("wbart", args_imp_y1)
+    model_imp_y0 <- do.call("wbart", args_imp_y0)
 
-    imp_y1 <- pred(model_imp_y1, X)
-    imp_y0 <- pred(model_imp_y0, X)
-
-  } else if(class == "glm"){
-
-    if(family[["family"]] == "binomial") family <- quasibinomial()
-    if(family[["family"]] == "poisson") family <- quasipoisson()
-
-    model_imp_y1 <- glm(form_imp_y1, family = family, data = X0)
-    model_imp_y0 <- glm(form_imp_y0, family = family, data = X1)
-
-    imp_y1 <- pred(model_imp_y1, X)
-    imp_y0 <- pred(model_imp_y0, X)
-
-  } else if(class %in% c("pbart", "wbart")){
-
-    sink(tempfile())
-    model_imp_y1 <- wbart(x.train = as.matrix(X0),
-                          y.train = imp_y1_untreated,
-                          x.test = as.matrix(X))
-    model_imp_y0 <- wbart(x.train = as.matrix(X1),
-                          y.train = imp_y0_treated,
-                          x.test = as.matrix(X))
-    sink()
     imp_y1 <- model_imp_y1[["yhat.test.mean"]]
     imp_y0 <- model_imp_y0[["yhat.test.mean"]]
 
-  } else stop("'class' must belong to 'lm', 'glm', 'pbart', or 'wbart'")
+  } else{
+
+    args_imp_y0 <- args_imp_y1 <- args
+
+    args_imp_y1$formula <- as.formula(paste("imp_y1_untreated", " ~ ",
+                                            paste(x, collapse= "+")))
+    args_imp_y0$formula <- as.formula(paste("imp_y0_treated", " ~ ",
+                                            paste(x, collapse= "+")))
+
+    if(class == "gbm"){
+      X0$imp_y1_untreated <- imp_y1_untreated
+      X1$imp_y0_treated <- imp_y0_treated
+      args_imp_y1$distribution <- args_imp_y0$distribution <- "gaussian"
+
+    } else if(family[["family"]] %in% c("binomial", "poisson")){
+      args_imp_y1$family <- args_imp_y0$family <- paste0("quasi", family[["family"]])
+    }
+
+    args_imp_y1$data <- X0
+    args_imp_y0$data <- X1
+
+    model_imp_y1 <- do.call(get(class), args_imp_y1)
+    model_imp_y0 <- do.call(get(class), args_imp_y0)
+
+    imp_y1 <- pred(model_imp_y1, X)
+    imp_y0 <- pred(model_imp_y0, X)
+  }
 
   imp_Ey1 <- mean(imp_y1, na.rm = TRUE)
   imp_Ey0 <- mean(imp_y0, na.rm = TRUE)

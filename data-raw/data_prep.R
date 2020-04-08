@@ -17,6 +17,8 @@
 #
 # summary(Lupu_Peisakhin)
 #
+# filter <- dplyr::filter
+#
 # tatar_g1 <- Lupu_Peisakhin %>% filter(generation == 1) %>%
 #   mutate(region2 = (region_origin==2), region3 = (region_origin==3), region4 = (region_origin==4),
 #          dest2 = (destination==2), dest3 = (destination==3),
@@ -52,9 +54,12 @@
 #           kulak, prosoviet_pre, religiosity_pre,
 #           trust_g3:fear_g3, trust_g2:fear_g2, trust_g1:fear_g1,
 #   ) %>%
-#   mutate(violence = as.numeric(violence >= 1))
+#   mutate(violence = as.numeric(violence >= 1)) %>%
+#   lapply(unclass) %>%
+#   as.data.frame()
 #
 # names(tatar)
 # dim(tatar)
+# class(tatar)
 #
 # use_data(tatar, overwrite = TRUE)

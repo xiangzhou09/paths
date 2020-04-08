@@ -30,6 +30,14 @@ pred.glm <- function(object, newdata, ...){
 
 #' @export
 #' @rdname pred
+pred.gbm <- function(object, newdata, method = "OOB", ...){
+  best_iter <- suppressMessages(gbm::gbm.perf(object, method = method, plot.it = FALSE))
+  gbm::predict.gbm(object, newdata, n.trees = best_iter,
+              type = "response", ...)
+}
+
+#' @export
+#' @rdname pred
 pred.pbart <- function(object, newdata, ...){
   predict(object, newdata, ...)[["prob.test.mean"]]
 }
