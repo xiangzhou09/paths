@@ -177,17 +177,14 @@ paths <- function(a, y, m, models, ps_model = NULL, nboot = 500, conf_level = 0.
   vnames <- lapply(formulas, all.vars)
   x <- setdiff(vnames[[K+1]], c(a, y, unlist(m)))
 
-  # Store all variable names in 'varnames'
-  varnames <- vector("list", K + 3)
-  names(varnames) <- c("x", "a", paste0("m", 1:K), "y")
-  varnames[[1]] <- x
-  varnames[[2]] <- a
-  varnames[[K+3]] <- y
-  for (k in seq(1, K)) varnames[[k+2]] <- setdiff(vnames[[k+1]], vnames[[k]])
-
   # Check if all variables are in 'data'
   if(any(vnames[[K+1]] %notin% names(data)))
     stop("all variables must be in 'data'.")
+
+  # Store all variable names in 'varnames'
+  varnames <- list(x, a, m, y)
+  names(varnames) <- c("x", "a", "m", "y")
+  names(varnames$m) <-  paste0("m", 1:K)
 
   # Extract propensity score model class, family, and formula
   if(!is.null(ps_model)){
@@ -225,9 +222,12 @@ paths <- function(a, y, m, models, ps_model = NULL, nboot = 500, conf_level = 0.
   boot_CI <- t(apply(boot_out$t, 2, quantile, c(low, high), na.rm = TRUE))
   colnames(boot_CI) <- c("lower", "upper")
 
+  # Bootstrap p-values
+  boot_p <- sapply(1:ncol(boot_out$t), function(i) pval(boot_out$t[,i], boot_out$t0[i]))
+
   # Estimates of path-specific and total effects
   pse <- data.frame('names' = names(boot_out$t0), 'estimate' = boot_out$t0,
-                    'se' = boot_se, boot_CI, row.names = NULL, check.names = FALSE)
+                    'se' = boot_se, boot_CI, 'p' = boot_p, row.names = NULL, check.names = FALSE)
   pse <- tidyr::separate(pse, names, into = c("estimator", "decomposition", "estimand"), sep = "_")
   pse_pure <- pse[pse$estimator == "pure", , drop = FALSE]
   pse_hybrid <- pse[pse$estimator == "hybrid", , drop = FALSE]
