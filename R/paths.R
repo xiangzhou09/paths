@@ -13,8 +13,8 @@
 #' When \eqn{K=1}, the path-specific causal effects are identical to the natural direct and indirect effects in
 #' standard causal mediation analysis (Imai et al. 2010; VanderWeeele 2015).
 #'
-#' @param a a character string indicating the name of the treatment variable. Only binary treatments
-#'   are currently supported.
+#' @param a a character string indicating the name of the treatment variable. The treatment
+#'   should be a binary variable taking either 0 or 1.
 #'
 #' @param y a character string indicating the name of the outcome variable.
 #'
@@ -57,11 +57,18 @@
 #'   \item{varnames}{a list of character strings indicating the names of the pretreatment confounders (\eqn{X}),
 #'   treatment(\eqn{A}), mediators (\eqn{M_1, \ldots, M_K}), and outcome (\eqn{Y}).}
 #'   \item{formulas}{formulas for the outcome models.}
+#'   \item{classes}{model classes for the outcome models.}
+#'   \item{families}{model families for the outcome models.}
+#'   \item{args}{model arguments for the outcome models.}
 #'   \item{ps_formula}{formula for the propensity model.}
+#'   \item{ps_class}{model class for the propensity model.}
+#'   \item{ps_family}{model family for the propensity model.}
+#'   \item{ps_args}{model arguments for the propensity model.}
+#'   \item{data}{the original data.}
 #'   \item{nboot}{number of bootstrap iterations.}
 #'   \item{conf_level}{confidence level for confidence intervals.}
-#'   \item{data}{the original data.}
-#'   \item{call}{the original call to the \code{paths} function.}
+#'   \item{boot_out}{output matrix from the bootstrap iterations.}
+#'   \item{call}{the matched call to the \code{paths} function.}
 #'   }
 #'
 #' @importFrom gbm gbm
@@ -73,73 +80,9 @@
 #'
 #' @references Zhou, Xiang and Teppei Yamamoto. 2020. "\href{https://osf.io/2rx6p}{Tracing Causal Paths from Experimental and Observational Data}".
 #'
-#' @examples
+#' @example inst/examples/paths-example.R
 #'
-#' data(tatar)
-#'
-#' x <- c("kulak", "prosoviet_pre", "religiosity_pre", "house_pre", "land_pre", "orchard_pre",
-#'   "animals_pre", "carriage_pre", "otherprop_pre")
-#' a <- "violence"
-#' y <- "annex"
-#'
-#' m1 <- c("trust_g1", "victim_g1", "fear_g1")
-#' m2 <- c("trust_g2", "victim_g2", "fear_g2")
-#' m3 <- c("trust_g3", "victim_g3", "fear_g3")
-#' mediators <- list(m1, m2, m3)
-#'
-#' ####################################################
-#' # Causal Paths Analysis using GLM
-#' ####################################################
-#'
-#' # outcome model formulas
-#' formula_m0 <- annex ~ kulak + prosoviet_pre + religiosity_pre + house_pre +
-#'   land_pre + orchard_pre + animals_pre + carriage_pre + otherprop_pre + violence
-#' formula_m1 <- update(formula_m0,    ~ . + trust_g1 + victim_g1 + fear_g1)
-#' formula_m2 <- update(formula_m1,    ~ . + trust_g2 + victim_g2 + fear_g2)
-#' formula_m3 <- update(formula_m2,    ~ . + trust_g3 + victim_g3 + fear_g3)
-#'
-#' # propensity score model formula
-#' formula_ps <- violence ~ kulak + prosoviet_pre + religiosity_pre + house_pre +
-#'   land_pre + orchard_pre + animals_pre + carriage_pre + otherprop_pre
-#'
-#' # outcome models
-#' glm_m0 <- glm(formula_m0, family = binomial("logit"), data = tatar)
-#' glm_m1 <- glm(formula_m1, family = binomial("logit"), data = tatar)
-#' glm_m2 <- glm(formula_m2, family = binomial("logit"), data = tatar)
-#' glm_m3 <- glm(formula_m3, family = binomial("logit"), data = tatar)
-#' glm_ymodels <- list(glm_m0, glm_m1, glm_m2, glm_m3)
-#'
-#' # propensity score model
-#' glm_ps <- glm(formula_ps, family = binomial("logit"), data = tatar)
-#'
-#' # causal paths analysis using glm
-#' paths_glm <- paths(a = "violence", y = "annex", m = mediators,
-#'   glm_ymodels, ps_model = glm_ps, data = tatar,
-#'   parallel = "multicore", ncpus = 4, nboot = 100)
-#'
-#' ####################################################
-#' # Causal Paths Analysis using BART
-#' ####################################################
-#'
-#' # constructing design matrices for fitting pbart models
-#' Y <- tatar[[y]]
-#' M0 <- as.matrix(tatar[, c(x, a), drop = FALSE])
-#' M1 <- as.matrix(tatar[, c(x, a, m1), drop = FALSE])
-#' M2 <- as.matrix(tatar[, c(x, a, m1, m2), drop = FALSE])
-#' M3 <- as.matrix(tatar[, c(x, a, m1, m2, m3), drop = FALSE])
-#'
-#' # outcome models
-#' pbart_m0 <- BART::pbart(x.train = M0, y.train = Y)
-#' pbart_m1 <- BART::pbart(x.train = M1, y.train = Y)
-#' pbart_m2 <- BART::pbart(x.train = M2, y.train = Y)
-#' pbart_m3 <- BART::pbart(x.train = M3, y.train = Y)
-#' pbart_ymodels <- list(pbart_m0, pbart_m1, pbart_m2, pbart_m3)
-#'
-#' # causal paths analysis using pbart
-#' paths_pbart <- paths(a = "violence", y = "annex", m = mediators,
-#'   pbart_ymodels, ps_model = glm_ps, data = tatar,
-#'   parallel = "multicore", ncpus = 4, nboot = 4)
-paths <- function(a, y, m, models, ps_model = NULL, nboot = 500, conf_level = 0.95, data, ...){
+paths <- function(a, y, m, models, ps_model = NULL, data, nboot = 500, conf_level = 0.95, ...){
 
   # Get function call
   cl <- match.call()
@@ -151,7 +94,7 @@ paths <- function(a, y, m, models, ps_model = NULL, nboot = 500, conf_level = 0.
     stop("'y' must be a character string of length one.")
   if(missing(m) || !is.list(m) || any(vapply(m, typeof, character(1)) != "character"))
     stop("'m' must be a list of character vectors.")
-  if(missing(models) || !inherits(models, "list") || length(models) < 2)
+  if(missing(models) || !is.list(models) || length(models) < 2)
     stop("'models' must be a list with at least two elements.")
   if(missing(data) || !is.data.frame(data) || ncol(data) < 3)
     stop("'data' must be a data frame with at least three columns.")
@@ -159,57 +102,48 @@ paths <- function(a, y, m, models, ps_model = NULL, nboot = 500, conf_level = 0.
   # Check if treatment is binary
   treated <- data[[a]]
   if(any(treated %notin% c(0, 1)))
-    stop("Treatment must a binary variable taking 0 or 1 with no missing values.")
+    stop("Treatment must be a binary variable taking 0 or 1 with no missing values.")
   treated <- as.logical(treated)
 
   # Proportion of units treated
   prop_treated <- mean(treated)
-  if(prop_treated==0 || prop_treated==1){
+  if(prop_treated==0 || prop_treated==1)
     stop("There must be both treated and untreated units.")
-  }
 
   # Number of mediators
   K <- length(m)
 
   # Extract classes, families, args, and formulas
   classes <- vapply(models, function(mod) class(mod)[[1]], character(1))
-  if(any(classes %notin% c("lm", "glm", "gbm", "wbart", "pbart"))){
+  if(any(classes %notin% c("lm", "glm", "gbm", "wbart", "pbart")))
     stop("'models' must belong to class 'lm', 'glm', 'gbm', 'wbart', or 'pbart'")
-  }
   families <- lapply(models, function(mod) mod[["family"]])
   args <- Map(get_args, models, classes)
   formulas <- Map(get_formula, models, classes)
 
-  # Extract covariate names
+  # Extract names of pretreatment covariates
   vnames <- lapply(formulas, all.vars)
   x <- setdiff(vnames[[K+1]], c(a, y, unlist(m)))
 
-  # Store all variable names in 'varnames'
-  varnames <- vector("list", K + 3)
-  names(varnames) <- c("x", "a", paste0("m", 1:K), "y")
-  varnames[[1]] <- x
-  varnames[[2]] <- a
-  varnames[[K+3]] <- y
-  for (k in seq(1, K)) varnames[[k+2]] <- setdiff(vnames[[k+1]], vnames[[k]])
-
   # Check if all variables are in 'data'
-  if(any(vnames[[K+1]] %notin% names(data))){
-    stop("all variables must be in 'data'.")
-  }
+  if(any(vnames[[K+1]] %notin% names(data))) stop("all variables must be in 'data'.")
 
-  # Extract propensity score model class, formula, and other args
+  # Store all variable names in 'varnames'
+  varnames <- list(x, a, m, y)
+  names(varnames) <- c("x", "a", "m", "y")
+  names(varnames$m) <-  paste0("m", 1:K)
+
+  # Extract propensity score model class, family, and formula
   if(!is.null(ps_model)){
 
-    # check ps model
+    # Check ps model
     ps_class <- class(ps_model)[[1]]
-    if(ps_class %notin% c("glm", "gbm", "ps", "pbart")){
+    if(ps_class %notin% c("glm", "gbm", "ps", "pbart"))
       stop("'ps_model' must belong to class 'glm', 'gbm', 'ps', or 'pbart'.")
-    }
     ps_family <- ps_model[["family"]]
     ps_args <- get_args(ps_model, ps_class)
     ps_formula <- get_formula(ps_model, ps_class)
-
-  } else ps_args <- ps_formula <- ps_family <- ps_class <- NULL
+  } else ps_formula <- ps_args <- ps_family <- ps_class <- NULL
 
   # Bootstrap to produce point estimates and confidence intervals
   boot_out <- boot::boot(data = data,
@@ -237,9 +171,12 @@ paths <- function(a, y, m, models, ps_model = NULL, nboot = 500, conf_level = 0.
   boot_CI <- t(apply(boot_out$t, 2, quantile, c(low, high), na.rm = TRUE))
   colnames(boot_CI) <- c("lower", "upper")
 
+  # Bootstrap p-values
+  boot_p <- apply(boot_out$t, 2, pval)
+
   # Estimates of path-specific and total effects
   pse <- data.frame('names' = names(boot_out$t0), 'estimate' = boot_out$t0,
-                    'se' = boot_se, boot_CI, row.names = NULL, check.names = FALSE)
+                    'se' = boot_se, boot_CI, 'p' = boot_p, row.names = NULL, check.names = FALSE)
   pse <- tidyr::separate(pse, names, into = c("estimator", "decomposition", "estimand"), sep = "_")
   pse_pure <- pse[pse$estimator == "pure", , drop = FALSE]
   pse_hybrid <- pse[pse$estimator == "hybrid", , drop = FALSE]
@@ -248,17 +185,16 @@ paths <- function(a, y, m, models, ps_model = NULL, nboot = 500, conf_level = 0.
   out <- list(pure = pse_pure,
               hybrid = pse_hybrid,
               varnames = varnames,
-              # args = args,
               formulas = formulas,
-              # classes = classes,
-              # families = families,
-              # ps_args = ps_args,
+              classes = classes,
+              args = args,
               ps_formula = ps_formula,
-              # ps_class = ps_class,
-              # ps_family = ps_family,
+              ps_class = ps_class,
+              ps_args = ps_args,
+              data = data,
               nboot = nboot,
               conf_level = conf_level,
-              data = data,
+              boot_out = boot_out$t,
               call = cl)
 
   class(out) <- "paths"

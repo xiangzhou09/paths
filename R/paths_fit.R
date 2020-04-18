@@ -5,6 +5,7 @@ paths_fit <- function(data, index = 1:nrow(data), varnames,
                       formulas, classes, families, args,
                       ps_formula, ps_class, ps_family, ps_args){
 
+  n <- nrow(data)
   newdata <- data[index, , drop = FALSE]
 
   # set environments for utility functions
@@ -16,6 +17,9 @@ paths_fit <- function(data, index = 1:nrow(data), varnames,
   fit_partial <- pryr::partial(fit, newdata = newdata)
   models <- Map(fit_partial, classes, formulas, args)
   cat(".")
+
+  # use K to denote the number of mediators
+  K <- length(models) - 1
 
   # fit ps_model
   if (!is.null(ps_class)){
@@ -30,15 +34,20 @@ paths_fit <- function(data, index = 1:nrow(data), varnames,
   # treatment indicator
   treated <- as.logical(newdata[[a]])
 
-  # proportion of units treated
-  prop_treated <- mean(treated)
-  if(prop_treated==0 || prop_treated==1){
-    warning("There must be both treated and untreated units.")
-    return(NULL)
-  }
+  # output matrices
+  pure_out <- hybrid_out <- matrix(NA, nrow = K+2, ncol = 2)
+  measure <- c("pure_Type I", "pure_Type II", "hybrid_Type I", "hybrid_Type II")
+  path <- c("direct", paste0("via M", K:1), "total")
 
-  # use K to denote the number of mediators
-  K <- length(models) - 1
+  # proportion of units treated
+  sum_treated <- sum(treated)
+  if(sum_treated <= 5 || sum_treated >= n - 5){
+    warning("Too few treated/untreated units. This iteration is ignored.")
+    out <- setNames(c(pure_out, hybrid_out),
+                    paste(rep(measure, each = K+2), path, sep = "_"))
+    return(out)
+  }
+  prop_treated <- sum_treated/n
 
   # extract model frames
   mfs <- lapply(formulas, mframe, data = newdata)
@@ -62,9 +71,6 @@ paths_fit <- function(data, index = 1:nrow(data), varnames,
 
   # imputation for the outcome models
   imps <- Map(impute, models[(K+1):2], mfs[(K+1):2])
-
-  # output matrices
-  pure_out <- hybrid_out <- matrix(NA, nrow = K+2, ncol = 2)
 
   # pure imputation estimator
   pure_imps <- Map(pure, imps, classes[(K+1):2], args[(K+1):2], families[(K+1):2])
@@ -92,9 +98,6 @@ paths_fit <- function(data, index = 1:nrow(data), varnames,
     hybrid_type2_decomp <- c(-diff(hybrid_type2), imp_Ey1 - imp_Ey0)
     hybrid_out[] <- cbind(hybrid_type1_decomp, hybrid_type2_decomp)
   }
-
-  measure <- c("pure_Type I", "pure_Type II", "hybrid_Type I", "hybrid_Type II")
-  path <- c("direct", paste0("via M", K:1), "total")
 
   out <- setNames(c(pure_out, hybrid_out),
                   paste(rep(measure, each = K+2), path, sep = "_"))

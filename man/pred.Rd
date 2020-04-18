@@ -22,17 +22,19 @@ pred(object, newdata, ...)
 \method{pred}{wbart}(object, newdata, ...)
 }
 \arguments{
-\item{object}{fitted model object, which can be of class \code{lm}, \code{glm}, \code{wbart},
-or \code{pbart}.}
+\item{object}{fitted model object, which can be of class \code{lm}, \code{glm}, \code{gbm},
+\code{wbart}, or \code{pbart}.}
 
 \item{newdata}{a data frame containing predictor variables.}
 
 \item{...}{additional arguments passed to the \code{predict} methods.}
+
+\item{method}{Method used to estimate the optimal number of boosting iterations for \code{gbm} objects.}
 }
 \value{
 a vector of expected outcomes for \code{newdata}
 }
 \description{
-Generic function that returns expected outcomes from \code{lm}, \code{glm}, \code{wbart},
- and \code{bbart} objects with new data
+Generic function that returns expected outcomes from \code{lm}, \code{glm}, \code{gbm}, \code{wbart},
+ and \code{pbart} objects with new data.
 }

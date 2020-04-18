@@ -2,7 +2,7 @@
 title: "paths"
 output: rmarkdown::html_vignette
 vignette: >
-  %\VignetteIndexEntry{paths}
+  %\VignetteIndexEntry{paths-doc}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---

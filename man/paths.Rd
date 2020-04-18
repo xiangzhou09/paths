@@ -11,17 +11,17 @@ paths(
   m,
   models,
   ps_model = NULL,
+  data,
   nboot = 500,
   conf_level = 0.95,
-  data,
   ...
 )
 
-\method{print}{paths}(x, ...)
+\method{print}{paths}(x, digits = 3, ...)
 }
 \arguments{
-\item{a}{a character string indicating the name of the treatment variable. Only binary treatments
-are currently supported.}
+\item{a}{a character string indicating the name of the treatment variable. The treatment
+should be a binary variable taking either 0 or 1.}
 
 \item{y}{a character string indicating the name of the outcome variable.}
 
@@ -45,17 +45,18 @@ are currently supported.}
 \code{\link[gbm]{gbm}}, \code{\link[twang]{ps}}, or \code{\link{BART}{pbart}}. When it is provided,
 the imputation-based weighting estimator is also used to compute path-specific causal effects.}
 
+\item{data}{a data frame containing all variables.}
+
 \item{nboot}{number of bootstrap iterations for estimating confidence intervals. Default is 500.}
 
 \item{conf_level}{the confidence level of the returned two-sided confidence
 intervals. Default is \code{0.95}.}
 
-\item{data}{a data frame containing all variables.}
-
-\item{...}{additional arguments to be passed to \code{boot::boot}, e.g.
-\code{parallel} and \code{ncpus}.}
+\item{...}{additional arguments passed to \code{print.default}}
 
 \item{x}{a fitted model object returned by the \code{\link{paths}} function.}
+
+\item{digits}{minimal number of significant digits printed.}
 }
 \value{
 An object of class \code{paths}, which is a list containing the
@@ -67,11 +68,18 @@ An object of class \code{paths}, which is a list containing the
   \item{varnames}{a list of character strings indicating the names of the pretreatment confounders (\eqn{X}),
   treatment(\eqn{A}), mediators (\eqn{M_1, \ldots, M_K}), and outcome (\eqn{Y}).}
   \item{formulas}{formulas for the outcome models.}
+  \item{classes}{model classes for the outcome models.}
+  \item{families}{model families for the outcome models.}
+  \item{args}{model arguments for the outcome models.}
   \item{ps_formula}{formula for the propensity model.}
+  \item{ps_class}{model class for the propensity model.}
+  \item{ps_family}{model family for the propensity model.}
+  \item{ps_args}{model arguments for the propensity model.}
+  \item{data}{the original data.}
   \item{nboot}{number of bootstrap iterations.}
   \item{conf_level}{confidence level for confidence intervals.}
-  \item{data}{the original data.}
-  \item{call}{the original call to the \code{paths} function.}
+  \item{boot_out}{output matrix from the bootstrap iterations.}
+  \item{call}{the matched call to the \code{paths} function.}
   }
 }
 \description{
@@ -85,33 +93,24 @@ When \eqn{K=1}, the path-specific causal effects are identical to the natural di
 standard causal mediation analysis (Imai et al. 2010; VanderWeeele 2015).
 }
 \examples{
-
 data(tatar)
-
-x <- c("kulak", "prosoviet_pre", "religiosity_pre", "house_pre", "land_pre", "orchard_pre",
-  "animals_pre", "carriage_pre", "otherprop_pre")
-a <- "violence"
-y <- "annex"
 
 m1 <- c("trust_g1", "victim_g1", "fear_g1")
 m2 <- c("trust_g2", "victim_g2", "fear_g2")
 m3 <- c("trust_g3", "victim_g3", "fear_g3")
 mediators <- list(m1, m2, m3)
 
-####################################################
-# Causal Paths Analysis using GLM
-####################################################
-
-# outcome model formulas
-formula_m0 <- annex ~ kulak + prosoviet_pre + religiosity_pre + house_pre +
-  land_pre + orchard_pre + animals_pre + carriage_pre + otherprop_pre + violence
+formula_m0 <- annex ~ kulak + prosoviet_pre + religiosity_pre + land_pre +
+  orchard_pre + animals_pre + carriage_pre + otherprop_pre + violence
 formula_m1 <- update(formula_m0,    ~ . + trust_g1 + victim_g1 + fear_g1)
 formula_m2 <- update(formula_m1,    ~ . + trust_g2 + victim_g2 + fear_g2)
 formula_m3 <- update(formula_m2,    ~ . + trust_g3 + victim_g3 + fear_g3)
-
-# propensity score model formula
-formula_ps <- violence ~ kulak + prosoviet_pre + religiosity_pre + house_pre +
+formula_ps <- violence ~ kulak + prosoviet_pre + religiosity_pre +
   land_pre + orchard_pre + animals_pre + carriage_pre + otherprop_pre
+
+####################################################
+# Causal Paths Analysis using GLM
+####################################################
 
 # outcome models
 glm_m0 <- glm(formula_m0, family = binomial("logit"), data = tatar)
@@ -125,31 +124,27 @@ glm_ps <- glm(formula_ps, family = binomial("logit"), data = tatar)
 
 # causal paths analysis using glm
 paths_glm <- paths(a = "violence", y = "annex", m = mediators,
-  glm_ymodels, ps_model = glm_ps, data = tatar,
-  parallel = "multicore", ncpus = 4, nboot = 100)
+  glm_ymodels, ps_model = glm_ps, data = tatar, nboot = 10)
 
 ####################################################
-# Causal Paths Analysis using BART
+# Causal Paths Analysis using GBM
 ####################################################
 
-# constructing design matrices for fitting pbart models
-Y <- tatar[[y]]
-M0 <- as.matrix(tatar[, c(x, a), drop = FALSE])
-M1 <- as.matrix(tatar[, c(x, a, m1), drop = FALSE])
-M2 <- as.matrix(tatar[, c(x, a, m1, m2), drop = FALSE])
-M3 <- as.matrix(tatar[, c(x, a, m1, m2, m3), drop = FALSE])
+require(gbm)
 
 # outcome models
-pbart_m0 <- BART::pbart(x.train = M0, y.train = Y)
-pbart_m1 <- BART::pbart(x.train = M1, y.train = Y)
-pbart_m2 <- BART::pbart(x.train = M2, y.train = Y)
-pbart_m3 <- BART::pbart(x.train = M3, y.train = Y)
-pbart_ymodels <- list(pbart_m0, pbart_m1, pbart_m2, pbart_m3)
+gbm_m0 <- gbm(formula_m0, data = tatar, distribution = "bernoulli", interaction.depth = 3)
+gbm_m1 <- gbm(formula_m1, data = tatar, distribution = "bernoulli", interaction.depth = 3)
+gbm_m2 <- gbm(formula_m2, data = tatar, distribution = "bernoulli", interaction.depth = 3)
+gbm_m3 <- gbm(formula_m3, data = tatar, distribution = "bernoulli", interaction.depth = 3)
+gbm_ymodels <- list(gbm_m0, gbm_m1, gbm_m2, gbm_m3)
 
-# causal paths analysis using pbart
-paths_pbart <- paths(a = "violence", y = "annex", m = mediators,
-  pbart_ymodels, ps_model = glm_ps, data = tatar,
-  parallel = "multicore", ncpus = 4, nboot = 4)
+# propensity score model via twang::ps
+gbm_ps <- gbm(formula_ps, data = tatar, distribution = "bernoulli", interaction.depth = 3)
+
+# causal paths analysis using glm
+paths_gbm <- paths(a = "violence", y = "annex", m = mediators,
+  gbm_ymodels, ps_model = gbm_ps, data = tatar, nboot = 10)
 }
 \references{
 Zhou, Xiang and Teppei Yamamoto. 2020. "\href{https://osf.io/2rx6p}{Tracing Causal Paths from Experimental and Observational Data}".

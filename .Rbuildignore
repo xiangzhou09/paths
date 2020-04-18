@@ -1,9 +1,7 @@
 ^.*\.Rproj$
 ^\.Rproj\.user$
 ^\.travis\.yml$
-^minh$
 ^data-raw$
 ^internal$
 ^tests$
 ^vignettes$
-^xiang$
