@@ -2,15 +2,14 @@
 # Utility functions
 #####################################################
 
-utils::globalVariables(c("a", "x", "y", "X", "X0", "X1",
-                         "ipw", "treated"))
+utils::globalVariables(c("a", "x", "y", "X", "X0", "X1", "ipw", "treated"))
 
 `%notin%` <- Negate(`%in%`)
 
 # logical or infix function
 `%||%` <- function(a, b) if (!is.null(a)) a else b
 
-# get args (except for pbart and wbart)
+# get args from a fitted object and its class (for lm, glm, gbm, and ps)
 get_args <- function(object, class){
   if(class %in% c("lm", "glm", "gbm")){
     args <- object$call
@@ -47,7 +46,7 @@ fit <- function(class, formula, args, newdata){
   if(class %in% c("pbart", "wbart")){
     X <- as.matrix(mframe(formula, data = newdata))
     Y <- model.frame(formula, data = newdata, na.action = NULL)[[1]]
-    args <- list(x.train = X, y.train = Y)
+    args <- list(x.train = X, y.train = Y, rm.const = FALSE)
     sink(tempfile()); on.exit(sink(), add = TRUE)
     do.call(get(class), args)
   } else {
@@ -79,10 +78,12 @@ pure <- function(imp, class, args, family){
 
     args_imp_y1 <- list(x.train = as.matrix(X0),
                         y.train = imp_y1_untreated,
-                        x.test = as.matrix(X))
+                        x.test = as.matrix(X),
+                        rm.const = FALSE)
     args_imp_y0 <- list(x.train = as.matrix(X1),
                         y.train = imp_y0_treated,
-                        x.test = as.matrix(X))
+                        x.test = as.matrix(X),
+                        rm.const = FALSE)
 
     sink(tempfile()); on.exit(sink(), add = TRUE)
     model_imp_y1 <- do.call("wbart", args_imp_y1)
@@ -105,7 +106,7 @@ pure <- function(imp, class, args, family){
       X1$imp_y0_treated <- imp_y0_treated
       args_imp_y1$distribution <- args_imp_y0$distribution <- "gaussian"
 
-    } else if(family[["family"]] %in% c("binomial", "poisson")){
+    } else if(!is.null(family) && family[["family"]] %in% c("binomial", "poisson")){
       args_imp_y1$family <- args_imp_y0$family <- paste0("quasi", family[["family"]])
     }
 
@@ -134,5 +135,15 @@ hybrid <- function(imp){
   imp_Ey0 <- sum(imp_y0_treated * ipw[treated], na.rm = TRUE)/sum(ipw[treated], na.rm = TRUE)
 
   c(imp_Ey1, imp_Ey0)
+}
+
+# Calculate bootstrap p-values
+pval <- function(x){
+  if(all(is.na(x))){
+    return(NA)
+  } else{
+    out <- 1 - 2 * abs(mean(x < 0, na.rm = TRUE) - 0.5)
+  }
+  out
 }
 

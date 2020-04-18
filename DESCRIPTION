@@ -2,7 +2,7 @@ Package: paths
 Type: Package
 Title: An Imputation Approach to Estimating Path-specific Causal Effects
 Version: 0.1.0
-Date: 2020-02-10
+Date: 2020-04-14
 Authors@R: c(
     person("Minh", "Trinh", email = "mdtrinh@mit.edu", role = "cre"),
     person("Teppei", "Yamamoto", email = "teppei@mit.edu", role = "aut"),
@@ -18,12 +18,13 @@ Depends:
     R (>= 3.6.0)
 Suggests: 
     knitr,
-    metR,
     rmarkdown
 Imports: 
     BART,
     boot,
+    gbm,
     ggplot2,
+    metR,
     parallel,
     pryr,
     stats,
