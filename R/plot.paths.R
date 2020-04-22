@@ -1,113 +1,142 @@
-#' #####################################################
-#' Plot method for paths#' objects
-#' #####################################################
+######################################################
+# Plot method for paths objects
+######################################################
 #'
 #' Plot Method for \code{paths} Objects
 #'
 #' Plot point estimates and confidence intervals for each individual
 #' path-specific effect from a \code{paths} object.
 #'
-#' @param paths_obj object of class \code{paths} as produced by the \code{paths}
+#' @param x object of class \code{paths} as produced by the \code{\link{paths}}
 #'   function
 #'
-#' @param mediator_names a vector of strings indicating the labels for each
-#'   mediator. Must contain as many elements as there are mediators in the
+#' @param mediator_names a vector of character strings giving the labels for each
+#'   mediator. Must contain as many elements as the number of mediators in the
 #'   model. If not supplied, the default labels will be constructed from the
-#'   model formulas supplied to the \code{paths} function.
+#'   fitted \code{paths} object.
 #'
-#' @param type either \code{1}, \code{2}, or \code{c(1,2)}, indicating whether
-#'   the plot will display estimates obtained using Type I, Type II, or both
-#'   Type I and Type II decompsition. Default is to show estimates from both
-#'   types of decomposition.
+#' @param estimator either \code{"pure"}, \code{"hybrid"}, or \code{"both"},
+#'   indicating whether the plot will display estimates obtained using the pure imputation
+#'   estimator, the imputation-based weighting estimator, or both. Default is to show
+#'   estimates from the pure imputation estimator.
 #'
-#' @param estimator either \code{"pure"}, \code{"hybrid"}, or \code{c("pure",
-#'   "hybrid")}, indicating whether the plot will display estimates obtained
-#'   using the pure imputation estimator, the imputation-based weighting
-#'   estimator, or both. Default is to show estimates from both estimators.
+#' @param decomp either \code{"Type I"}, \code{"Type II"}, or \code{"both"},
+#'   indicating whether the plot will display estimates obtained using Type I decomposition,
+#'   Type II decomposition, or both Type I and Type II decompositions. Default is to show
+#'   estimates from Type I decomposition.
 #'
 #' @param horizontal logical indicating whether a horizontal plot should be
-#'   generated.
+#'   generated. Default is to use a horizontal plot when \code{decomp != both}.
+#'
+#' @param ... additional arguments.
 #'
 #' @return a \code{ggplot2} plot, which can be further customized by the user.
 #'
-#' @inherit paths seealso
-#' @inherit paths author
-#'
 #' @rdname plot.paths
+#' @import ggplot2
+#' @example inst/examples/plot.paths-example.R
 #'
 #' @export
-plot.paths <- function(paths_obj, mediator_names = NULL, type = c(1,2),
-                       estimator = c("pure", "hybrid"), horizontal = FALSE) {
+plot.paths <- function(x, mediator_names = NULL,
+                       estimator = c("pure", "hybrid", "both"),
+                       decomp = c("Type I", "Type II", "both"),
+                       horizontal = (decomp != "both"), ...) {
 
+  # number of mediators
+  K <- length(x$varnames$m)
+
+  # check mediator names
   if(is.null(mediator_names)){
-    mediators <- sapply(paths_obj$varnames$m, function(m) paste(m, collapse = " + "))
+    mediators <- vapply(x$varnames$m, function(m) paste(m, collapse = " + "), character(1))
   } else {
-    if(length(mediator_names) != length(paths_obj$varnames$m)) {
-      stop("'mediator_names' must have the same length with 'mediators'")
+    if(length(mediator_names) != K) {
+      stop("'mediator_names' must have the same length as the number of mediators")
     }
     mediators <- mediator_names
   }
 
+  # match decomp and estimator arguments
+  decomp <- match.arg(decomp)
+  estimator <- match.arg(estimator)
 
-  if(any(unique(type) %notin% c(1,2))) {
-    stop("'type' must be either 1, 2, or c(1,2)")
-  }
-  type <- c("Type I", "Type II")[type]
-
-  if(any(unique(estimator) %notin% c("pure", "hybrid"))) {
-    stop("'estimator' must be either \"pure\", \"hybrid\", or c(\"pure\", \"hybrid\")")
-  }
-  if("hybrid" %in% estimator & is.null(paths_obj$ps_formula)) {
-    warning("Estimates using imputation-based weighting estimator were not calculated.
-            Plotting only estimates using pure imputation estimator.")
+  # check estimator
+  if((estimator != "pure") && is.null(x$ps_formula)) {
+    warning("Estimates using the imputation-based weighting (hybrid) estimator are not available;
+             Using the pure imputation estimator instead")
     estimator <- "pure"
   }
+  if(estimator == "both") estimator <- c("pure", "hybrid")
 
-  plot_data <- rbind(paths_obj$pure, if(!is.null(paths_obj$ps_formula)) paths_obj$hybrid)
+  # create plot data
+  plot_data <- do.call("rbind", c(x[estimator], make.row.names = FALSE))
 
-  # labelling (hardcoding for now)
-  estimand_labs <- c("Direct Effect", "Total Effect", paste("via", mediators))
-  plot_data$estimand_plot <- relevel(factor(plot_data$estimand, labels = estimand_labs),
-                                     ref = "Total Effect")
+  # label estimands
+  estimand_levs <- c(paste0("via ", "M", K:1), "direct", "total")
+  estimand_labs <- c(paste("via", rev(mediators)), "Direct Effect", "Total Effect")
+  plot_data$estimand <- factor(plot_data$estimand, levels = estimand_levs, labels = estimand_labs)
 
-  estimator_labs <- if("hybrid" %in% estimator) {
-    c("Imputation-Based Weighting Estimator", "Pure Imputation Estimator")
-  } else {
-    "Pure Imputation Estimator"
+  # label estimator
+  if(length(estimator) == 2){
+    plot_data$estimator <- factor(plot_data$estimator,
+                                  levels = c("pure", "hybrid"),
+                                  labels = c("Pure Imputation Estimator",
+                                             "Imputation-Based Weighting Estimator"))
+
+    rmv <- (plot_data$estimand == "Total Effect") &
+      (plot_data$estimator == "Imputation-Based Weighting Estimator")
+
+    plot_data <- plot_data[!rmv, , drop = FALSE]
+
+    # create color and shape scale for ggplot
+    color_scale <- scale_color_discrete(name = "")
+    shape_scale <- scale_shape_discrete(name = "")
+
+  } else{
+
+    plot_data$estimator <- if(estimator == "pure") "Pure Imputation Estimator" else{
+      "Imputation-Based Weighting Estimator"
+    }
+
+    # create color and shape scale for ggplot
+    color_scale <- scale_color_manual(guide = FALSE, values = "black")
+    shape_scale <- scale_shape_discrete(guide = FALSE)
   }
-  plot_data$estimator_plot <- relevel(factor(plot_data$estimator, labels = estimator_labs),
-                                      ref = "Pure Imputation Estimator")
 
-  decomposition_labs <- c("Type 1 Decomposition", "Type 2 Decomposition")
-  plot_data$decomposition_plot <- relevel(factor(plot_data$decomposition, labels = decomposition_labs),
-                                          ref = "Type 1 Decomposition")
+  # label decomposition
+  if(decomp == "both"){
+    plot_data$decomposition <- factor(plot_data$decomposition,
+                                      levels = c("Type I", "Type II"),
+                                      labels = c("Type I Decomposition",
+                                                 "Type II Decomposition"))
 
-  plot_data <- plot_data[which(plot_data$estimator %in% estimator &
-                                 plot_data$decomposition %in% type),]
-  plot_data <- plot_data[-which(plot_data$decomposition == "Type II" &
-                                 plot_data$estimand == "total"), ]
+    # create facet for ggplot
+    decomp_facet <- facet_wrap(. ~ decomposition)
+  } else{
+    plot_data <- plot_data[plot_data$decomposition == decomp, ]
+    plot_data$decomposition <- paste0(decomp, " Decomposition")
 
-  # Adjust aesthetics based on how many graphs are requested
-  type_legend <- if(length(type) == 2) {
-    scale_color_manual(labels = c("Type 1 Decomposition", "Type 2 Decomposition"),
-                       values = c("blue", "red"))
-  } else {
-    scale_color_manual(guide = FALSE, values = c("black"))
+    decomp_facet <- NULL
   }
-  estimator_facet <- if(length(estimator) == 2) facet_wrap(. ~ estimator_plot)
-  coord_horiz <- if(horizontal) coord_flip()
+
+  if(horizontal){
+    coord_horiz <- coord_flip()
+  } else{
+    coord_horiz <- NULL
+    plot_data$estimand <- factor(plot_data$estimand,
+                                 levels = rev(levels(plot_data$estimand)))
+  }
 
   # Generate plot
-  ggplot(plot_data, aes(x = estimand_plot, y = estimate, colour = decomposition_plot)) +
-    geom_pointrange(aes(ymin = lower, ymax = upper), size = 1,
-                    position = position_dodge2(width = .5)) +
-    geom_vline(xintercept = 0, linetype = 2) +
+  ggplot(plot_data, aes_(x = quote(estimand), y = quote(estimate),
+                         shape = quote(estimator), colour = quote(estimator))) +
+    geom_pointrange(aes_(ymin = quote(lower), ymax = quote(upper)),
+                    size = 1, position = position_dodge2(width = .5)) +
     xlab("") +
     ylab("Estimates of Total and Path-Specific Effects") +
+    color_scale +
+    shape_scale +
+    decomp_facet +
+    coord_horiz +
     theme_minimal(base_size = 14) +
-    theme(legend.position = "bottom", legend.title = element_blank()) +
-    type_legend +
-    estimator_facet +
-    coord_horiz
-
+    theme(legend.position = "bottom")
 }

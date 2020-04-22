@@ -9,7 +9,7 @@ sens(
   confounded = "M1",
   estimand = "via M1",
   estimator = c("pure", "hybrid"),
-  decomposition = c("Type I", "Type II"),
+  decomp = c("Type I", "Type II"),
   gamma_values = NULL,
   eta_values = NULL
 )
@@ -26,7 +26,7 @@ confounding is being investigated. One of \{\code{"M1", "M2", \ldots}\} or \code
 \item{estimator}{type of estimator, the pure imputation estimator (\code{"pure"}) or the imputation-based
 weighting estimator (\code{"hybrid"}).}
 
-\item{decomposition}{type of decomposition, \code{"Type I"} or \code{"Type II"}.}
+\item{decomp}{type of decomposition, \code{"Type I"} or \code{"Type II"}.}
 
 \item{gamma_values}{potential values of the \eqn{\gamma} parameter. If not provided, it is defaulted to
 a range of 20 values from -\eqn{\textup{sd}(Y)} to \eqn{\textup{sd}(Y)}, where \eqn{sd} denotes standard
@@ -53,33 +53,24 @@ confounding being investigated, type of estimator, type of decomposition, and po
 the \eqn{\gamma} and \eqn{\eta} parameters.
 }
 \examples{
-
 data(tatar)
-
-x <- c("kulak", "prosoviet_pre", "religiosity_pre", "house_pre", "land_pre", "orchard_pre",
-  "animals_pre", "carriage_pre", "otherprop_pre")
-a <- "violence"
-y <- "annex"
 
 m1 <- c("trust_g1", "victim_g1", "fear_g1")
 m2 <- c("trust_g2", "victim_g2", "fear_g2")
 m3 <- c("trust_g3", "victim_g3", "fear_g3")
 mediators <- list(m1, m2, m3)
 
-####################################################
-# Causal Paths Analysis using GLM
-####################################################
-
-# outcome model formulas
-formula_m0 <- annex ~ kulak + prosoviet_pre + religiosity_pre + house_pre +
-  land_pre + orchard_pre + animals_pre + carriage_pre + otherprop_pre + violence
+formula_m0 <- annex ~ kulak + prosoviet_pre + religiosity_pre + land_pre +
+  orchard_pre + animals_pre + carriage_pre + otherprop_pre + violence
 formula_m1 <- update(formula_m0,    ~ . + trust_g1 + victim_g1 + fear_g1)
 formula_m2 <- update(formula_m1,    ~ . + trust_g2 + victim_g2 + fear_g2)
 formula_m3 <- update(formula_m2,    ~ . + trust_g3 + victim_g3 + fear_g3)
-
-# propensity score model formula
-formula_ps <- violence ~ kulak + prosoviet_pre + religiosity_pre + house_pre +
+formula_ps <- violence ~ kulak + prosoviet_pre + religiosity_pre +
   land_pre + orchard_pre + animals_pre + carriage_pre + otherprop_pre
+
+####################################################
+# Causal Paths Analysis using GLM
+####################################################
 
 # outcome models
 glm_m0 <- glm(formula_m0, family = binomial("logit"), data = tatar)
@@ -93,25 +84,11 @@ glm_ps <- glm(formula_ps, family = binomial("logit"), data = tatar)
 
 # causal paths analysis using glm
 paths_glm <- paths(a = "violence", y = "annex", m = mediators,
-  glm_ymodels, ps_model = glm_ps, data = tatar,
-  parallel = "multicore", ncpus = 4, nboot = 100)
+  glm_ymodels, ps_model = glm_ps, data = tatar, nboot = 50)
 
-# sensitivity analysis
+# sensitivity analysis for the path-specific effect via M1
 sens_glm <- sens(paths_glm, confounded = "M1", estimand = "via M1",
   gamma_values = - seq(0, 0.5, 0.002), eta_values = seq(-0.5, 0.5, 0.002))
 
-# sensitivity analysis plot
-require(ggplot2)
-if(requireNamespace("metR", quietly = TRUE)){
-ggplot(data = sens_glm$adjusted, aes(eta_k, gamma_k)) +
-  geom_raster(aes(fill = reversed), show.legend = FALSE) +
-  scale_fill_manual(values = c("white", "grey70")) +
-  geom_contour(aes(z = value), colour = "black") +
-  metR::geom_text_contour(aes(z = value), size = 5) +
-  ylab(expression(paste("Effect of U on Regime Support (", gamma[1], ")"))) +
-  xlab(expression(paste("Difference in the Prevalence of U between Treated and
-    Untreated units (", eta[1], ")"))) +
-  scale_x_continuous(position = "top") +
-  theme_minimal(base_size = 14)
-}
+plot(sens_glm)
 }
