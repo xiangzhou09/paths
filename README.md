@@ -154,9 +154,8 @@ which can be objects returned by `glm`, `gbm::gbm`. `twang::ps`, or
 
 ``` r
 # propensity score model via gbm
-formula_ps <- violence ~ kulak + prosoviet_pre +
-  religiosity_pre + land_pre + orchard_pre + animals_pre +
-  carriage_pre + otherprop_pre
+formula_ps <- violence ~ kulak + prosoviet_pre + religiosity_pre + land_pre +
+  orchard_pre + animals_pre + carriage_pre + otherprop_pre
 gbm_ps <- gbm(formula_ps, data = tatar, distribution = "bernoulli",
               interaction.depth = 3)
 
