@@ -13,15 +13,15 @@
 )
 }
 \arguments{
-\item{x}{object of class \code{sens} as produced by the \code{\link{sens}}
+\item{x}{an object of class \code{sens} returned by the \code{\link{sens}}
 function}
 
 \item{outcome_name}{a character string indicating the name of the outcome.}
 
-\item{x_axis}{sensitivity analysis parameter shown on the x axis. Default is "eta_k",
-i.e., the difference in the prevalence of the unobserved confounder \eqn{U} between treated
+\item{x_axis}{sensitivity analysis parameter shown on the x axis. Default is \code{"eta_k"},
+i.e., the difference in the prevalence of an unobserved confounder \eqn{U} between treated
 and untreated units given pretreatment covariates \eqn{X} and mediators \eqn{M_1,\ldots, M_k}.
-Alternatively, it can be "gamma_k", i.e., the average effect of the unobserved confounder
+Alternatively, it can be \code{"gamma_k"}, i.e., the average effect of the unobserved confounder
 \eqn{U} on the outcome given pretreatment covariates \eqn{X}, treatment \eqn{A},
 and mediators \eqn{M_1,\ldots, M_k}.}
 
@@ -37,7 +37,7 @@ average values in the \code{sens} object.}
 a \code{ggplot2} plot, which can be further customized by the user.
 }
 \description{
-Contour plot for sensitivity analysis objects returned by \code{\link{sens}}.
+Contour plot for sensitivity analysis objects.
 }
 \examples{
 data(tatar)

@@ -3,12 +3,57 @@
 \docType{data}
 \name{tatar}
 \alias{tatar}
-\title{tatar dataset}
-\format{An object of class \code{data.frame} with 427 rows and 22 columns.}
+\title{The Legacy of Political Violence among Crimean Tatars}
+\format{A data frame with 427 rows and 19 columns: \describe{
+  \item{kulak}{Whether the first-generation respondent had close relatives subject to
+   dekulakization. 0: no; 1: yes.}
+  \item{prosoviet_pre}{Whether the first-generation respondent's close relatives privately
+  supported or opposed Soviet authorities. 1: opposed; 2: indifferent; 3: supported.}
+  \item{religiosity_pre}{How important it was for the first-generation respondent's family to
+  follow Islamic customs and traditions while in deportation. 1: not at all important;
+  2: somewhat important; 3: very important.}
+  \item{land_pre}{Whether the first-generation respondent's close relatives owned agricultural
+  land. 0: no; 1: some; 2: a lot.}
+  \item{orchard_pre}{Whether the first-generation respondent's close relatives owned orchards.
+  0: no; 1: yes.}
+  \item{animals_pre}{Whether the first-generation respondent's close relatives owned pasture animals.
+  0: no; 1: some; 2: a lot.}
+  \item{carriage_pre}{Whether the first-generation respondent's close relatives owned horse-drawn
+  carriages. 0: no; 1: yes.}
+  \item{otherprop_pre}{Whether the first-generation respondent's close relatives owned other substantial
+  property. 0: no; 1: yes.}
+  \item{violence}{Whether the first-generation respondent had a family member who died due to poor
+  conditions during the 1944-45 deportation to Crimea. 0: no; 1: yes.}
+  \item{trust_g1}{Whether the first-generation respondent trusts Crimean Tatars more than Russians.
+  1: trusts Crimean Tatars more; 0: indifferent; -1: trusts Russians more.}
+  \item{victim_g1}{Whether the first-generation respondent consider them or their close relatives victims
+  of the Soviet political system. 0: no; 1: yes.}
+  \item{fear_g1}{Whether the first-generation respondent started to fear concerning their future
+  after the March referendum. 0: no; 1: yes.}
+  \item{trust_g2}{The degree to which second-generation respondents trust Crimean Tatars more than Russians,
+  ranging from -1 to 1 (averaged over multiple respondents).}
+  \item{victim_g2}{The degree to which second-generation respondents consider them or their close relatives
+  victims of the Soviet political system, ranging from 0 to 1 (averaged over multiple respondents).}
+  \item{fear_g2}{The degree to which second-generation respondents started to fear concerning their future
+  after the March referendum, ranging from 0 to 1 (averaged over multiple respondents).}
+  \item{trust_g3}{Whether the third-generation respondent trusts Crimean Tatars more than Russians.
+  1: trusts Crimean Tatars more; 0: indifferent; -1: trusts Russians more.}
+  \item{victim_g3}{Whether the third-generation respondent considers them or their close relatives victims
+  of the Soviet political system. 0: no; 1: yes.}
+  \item{fear_g3}{Whether the third-generation respondent started to fear concerning their future
+  after the March referendum. 0: no; 1: yes.}
+  \item{annex}{Whether the third-generation respondent supports Russia’s annexation of Crimea. 0: no; 1: yes.}
+  }}
 \usage{
 tatar
 }
 \description{
-A dataset containing the tatar data
+A dataset of 427 Crimean Tatars including variables on ancestor victimization,
+ political identities of first-, second- and third-generation respondents,
+ and political attitudes toward Russia's annexation of Crimea (Lupu and Peisakhin 2017).
+}
+\references{
+Lupu, Noam and Leonid Peisakhin. 2017. "The Legacy of Political Violence across Generations.”
+  American Journal of Political Science 61(4):836-851.
 }
 \keyword{datasets}

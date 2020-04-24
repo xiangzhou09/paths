@@ -7,24 +7,26 @@
 #' \code{paths} estimates path-specific causal effects in the presence of \eqn{K(\geq 1)} causally
 #' ordered mediators. It implements the pure imputation estimator and the imputation-based weighting
 #' estimator (when a propensity score model is provided) as detailed in Zhou and Yamamoto (2020).
-#' The user supplies the names of the treatment and outcome variables, \eqn{K+1} fitted outcome models given
-#' pretreatment confounders and varying sets of mediators, and a data frame containing all the variables. The
-#' function returns \eqn{K+1} path-specific causal effects that together constitute the total treatment effect.
-#' When \eqn{K=1}, the path-specific causal effects are identical to the natural direct and indirect effects in
-#' standard causal mediation analysis (Imai et al. 2010; VanderWeeele 2015).
+#' The user supplies the names of the treatment, outcome, mediator variables, \eqn{K+1} fitted models
+#' characterizing the conditional mean of the outcome given treatment, pretreatment confounders, and
+#' varying sets of mediators, and a data frame containing all the variables. The function returns
+#' \eqn{K+1} path-specific causal effects that together constitute the total treatment effect.
+#' When \eqn{K=1}, the path-specific causal effects are identical to the natural direct and indirect
+#' effects in standard causal mediation analysis.
 #'
 #' @param a a character string indicating the name of the treatment variable. The treatment
 #'   should be a binary variable taking either 0 or 1.
 #'
 #' @param y a character string indicating the name of the outcome variable.
 #'
-#' @param m a list of \eqn{K} character vectors indicating the names of the mediators \eqn{M_1,\ldots, M_K}.
+#' @param m a list of \eqn{K} character vectors indicating the names of \eqn{K} causally ordered mediators
+#'   \eqn{M_1,\ldots, M_K}.
 #'
 #' @param models a list of \eqn{K+1} fitted model objects describing how the outcome depends on treatment,
 #'   pretreatment confounders, and varying sets of mediators, where \eqn{K} is the number of mediators.
 #'   \itemize{
-#'   \item the first element is a baseline model of the outcome conditional on treatment and potential
-#'    pretreatment confounders.
+#'   \item the first element is a baseline model of the outcome conditional on treatment and pretreatment
+#'   confounders.
 #'   \item the \eqn{k}th element is an outcome model conditional on treatment, pretreatment confounders,
 #'   and mediators \eqn{M_1,\ldots, M_{k-1}}.
 #'   \item the last element is an outcome model conditional on treatment, pretreatment confounders,
@@ -34,7 +36,7 @@
 #'   The fitted model objects can be of type \code{\link{lm}}, \code{\link{glm}}, \code{\link[gbm]{gbm}},
 #'   \code{\link[BART]{wbart}}, or \code{\link[BART]{pbart}}.
 #'
-#' @param ps_model an optional propensity score model of the treatment. It can be of type \code{\link{glm}},
+#' @param ps_model an optional propensity score model for treatment. It can be of type \code{\link{glm}},
 #'   \code{\link[gbm]{gbm}}, \code{\link[twang]{ps}}, or \code{\link[BART]{pbart}}. When it is provided,
 #'   the imputation-based weighting estimator is also used to compute path-specific causal effects.
 #'
@@ -57,13 +59,13 @@
 #'   \item{varnames}{a list of character strings indicating the names of the pretreatment confounders (\eqn{X}),
 #'   treatment(\eqn{A}), mediators (\eqn{M_1, \ldots, M_K}), and outcome (\eqn{Y}).}
 #'   \item{formulas}{formulas for the outcome models.}
-#'   \item{classes}{model classes for the outcome models.}
-#'   \item{families}{model families for the outcome models.}
-#'   \item{args}{model arguments for the outcome models.}
-#'   \item{ps_formula}{formula for the propensity model.}
-#'   \item{ps_class}{model class for the propensity model.}
-#'   \item{ps_family}{model family for the propensity model.}
-#'   \item{ps_args}{model arguments for the propensity model.}
+#'   \item{classes}{classes of the outcome models.}
+#'   \item{families}{model families of the outcome models.}
+#'   \item{args}{a list containing arguments of the outcome models.}
+#'   \item{ps_formula}{formula for the propensity score model.}
+#'   \item{ps_class}{class of the propensity score model.}
+#'   \item{ps_family}{model family of the propensity score model.}
+#'   \item{ps_args}{arguments of the propensity score model.}
 #'   \item{data}{the original data.}
 #'   \item{nboot}{number of bootstrap iterations.}
 #'   \item{conf_level}{confidence level for confidence intervals.}

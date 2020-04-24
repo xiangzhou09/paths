@@ -2,7 +2,7 @@
 % Please edit documentation in R/sens.R
 \name{sens}
 \alias{sens}
-\title{Sensitivity Analysis for Unobserved Confounding on Path-Specific Effects}
+\title{Sensitivity Analysis for Unobserved Confounding on Path-Specific Causal Effects}
 \usage{
 sens(
   object,
@@ -28,13 +28,17 @@ weighting estimator (\code{"hybrid"}).}
 
 \item{decomp}{type of decomposition, \code{"Type I"} or \code{"Type II"}.}
 
-\item{gamma_values}{potential values of the \eqn{\gamma} parameter. If not provided, it is defaulted to
-a range of 20 values from -\eqn{\textup{sd}(Y)} to \eqn{\textup{sd}(Y)}, where \eqn{sd} denotes standard
-deviation and \eqn{Y} denotes the outcome variable.}
+\item{gamma_values}{potential values of the \eqn{\gamma} parameter, which denotes the average effect of
+the unobserved confounder \eqn{U} on the outcome given pretreatment covariates \eqn{X}, treatment \eqn{A},
+and mediators \eqn{M_1,\ldots, M_k}. If not provided, it is defaulted to a range of 20 values from
+-\eqn{\textup{sd}(Y)} to \eqn{\textup{sd}(Y)}, where \eqn{sd} denotes standard deviation and \eqn{Y}
+denotes the outcome variable.}
 
-\item{eta_values}{potential values of the \eqn{\eta} parameter. If not provided, it is defaulted to
-a range of 20 values from -\eqn{sd(A)} to \eqn{sd(A)}, where \eqn{sd} denotes standard deviation and
-\eqn{Y} denotes the treatment variable.}
+\item{eta_values}{potential values of the \eqn{\eta} parameter, which denotes the difference in the
+prevalence of the unobserved confounder \eqn{U} between treated and untreated units given pretreatment
+covariates \eqn{X} and mediators \eqn{M_1,\ldots, M_k}. If not provided, it is defaulted to a range of
+20 values from -\eqn{sd(A)} to \eqn{sd(A)}, where \eqn{sd} denotes standard deviation and \eqn{A} denotes
+the treatment variable.}
 }
 \value{
 A list containing the following elements \describe{
@@ -46,10 +50,10 @@ A list containing the following elements \describe{
 }
 \description{
 \code{sens} implements a set of bias formulas detailed in Zhou and Yamamoto (2020) for assessing
-the sensitivity of estimated path-specific effects to unobserved confounding of the
-the mediator-outcome relationships. The user provides a fitted \code{paths} object, the mediator
-whose relationship with the outcome being confounded, the estimand whose sensitivity to unobserved
-confounding being investigated, type of estimator, type of decomposition, and possible values of
+the sensitivity of estimated path-specific effects to an unobserved confounder \eqn{U} of a mediator-outcome
+relationship. The user provides a fitted \code{paths} object, the mediator whose relationship
+with the outcome is potentially confounded, the estimand whose sensitivity to unobserved
+confounding is being investigated, type of estimator, type of decomposition, and possible values of
 the \eqn{\gamma} and \eqn{\eta} parameters.
 }
 \examples{
@@ -91,4 +95,7 @@ sens_glm <- sens(paths_glm, confounded = "M1", estimand = "via M1",
   gamma_values = - seq(0, 0.5, 0.002), eta_values = seq(-0.5, 0.5, 0.002))
 
 plot(sens_glm)
+}
+\references{
+Zhou, Xiang and Teppei Yamamoto. 2020. "\href{https://osf.io/2rx6p}{Tracing Causal Paths from Experimental and Observational Data}".
 }

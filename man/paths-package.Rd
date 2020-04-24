@@ -14,9 +14,9 @@ Zhou, Xiang and Teppei Yamamoto. 2020. "\href{https://osf.io/2rx6p}{Tracing Caus
 }
 \author{
 Minh Trinh, Massachusetts Institute of Technology,
-  \email{mdtrinh@mit.edu}
+  \email{mdtrinh@mit.edu};
   Teppei Yamamoto, Massachusetts Institute of Technology,
   \email{teppei@mit.edu};
   Xiang Zhou, Harvard University,
-  \email{xiang_zhou@fas.harvard.edu};
+  \email{xiang_zhou@fas.harvard.edu}
 }

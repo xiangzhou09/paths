@@ -3,13 +3,13 @@
 #####################################################
 #' Obtaining predicted values from fitted models
 #'
-#' Generic function that returns expected outcomes from \code{lm}, \code{glm}, \code{gbm}, \code{wbart},
+#' Generic function that returns predicted outcomes from \code{lm}, \code{glm}, \code{gbm}, \code{wbart},
 #'  and \code{pbart} objects with new data.
 #'
-#' @param object fitted model object, which can be of class \code{lm}, \code{glm}, \code{gbm},
+#' @param object a fitted model object, which can be of class \code{lm}, \code{glm}, \code{gbm},
 #'  \code{wbart}, or \code{pbart}.
 #' @param newdata a data frame containing predictor variables.
-#' @param method  Method used to estimate the optimal number of boosting iterations for \code{gbm} objects.
+#' @param method  Method used to determine the optimal number of boosting iterations for \code{gbm} objects.
 #' @param ... additional arguments passed to the \code{predict} methods.
 #'
 #' @return a vector of expected outcomes for \code{newdata}

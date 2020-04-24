@@ -14,12 +14,12 @@
 )
 }
 \arguments{
-\item{x}{object of class \code{paths} as produced by the \code{\link{paths}}
+\item{x}{an object of class \code{paths} returned by the \code{\link{paths}}
 function}
 
 \item{mediator_names}{a vector of character strings giving the labels for each
-mediator. Must contain as many elements as the number of mediators in the
-model. If not supplied, the default labels will be constructed from the
+mediator. It must contain as many elements as the number of mediators in the
+model. If not supplied, a set of default labels will be constructed from the
 fitted \code{paths} object.}
 
 \item{estimator}{either \code{"pure"}, \code{"hybrid"}, or \code{"both"},
@@ -32,8 +32,8 @@ indicating whether the plot will display estimates obtained using Type I decompo
 Type II decomposition, or both Type I and Type II decompositions. Default is to show
 estimates from Type I decomposition.}
 
-\item{horizontal}{logical indicating whether a horizontal plot should be
-generated. Default is to use a horizontal plot when \code{decomp != both}.}
+\item{horizontal}{a logical variable indicating whether a horizontal plot should be
+used. Default is to use a horizontal plot when \code{decomp != both}.}
 
 \item{...}{additional arguments.}
 }

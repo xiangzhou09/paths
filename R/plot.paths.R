@@ -7,12 +7,12 @@
 #' Plot point estimates and confidence intervals for each individual
 #' path-specific effect from a \code{paths} object.
 #'
-#' @param x object of class \code{paths} as produced by the \code{\link{paths}}
+#' @param x an object of class \code{paths} returned by the \code{\link{paths}}
 #'   function
 #'
 #' @param mediator_names a vector of character strings giving the labels for each
-#'   mediator. Must contain as many elements as the number of mediators in the
-#'   model. If not supplied, the default labels will be constructed from the
+#'   mediator. It must contain as many elements as the number of mediators in the
+#'   model. If not supplied, a set of default labels will be constructed from the
 #'   fitted \code{paths} object.
 #'
 #' @param estimator either \code{"pure"}, \code{"hybrid"}, or \code{"both"},
@@ -25,8 +25,8 @@
 #'   Type II decomposition, or both Type I and Type II decompositions. Default is to show
 #'   estimates from Type I decomposition.
 #'
-#' @param horizontal logical indicating whether a horizontal plot should be
-#'   generated. Default is to use a horizontal plot when \code{decomp != both}.
+#' @param horizontal a logical variable indicating whether a horizontal plot should be
+#'   used. Default is to use a horizontal plot when \code{decomp != both}.
 #'
 #' @param ... additional arguments.
 #'
