@@ -16,7 +16,6 @@ knitr::opts_chunk$set(
 )
 to <- asis_output("\U2192")
 leadsto <- asis_output("\U2933")
-set.seed(02138)
 library(paths)
 library(gbm)
 ```
@@ -44,6 +43,10 @@ devtools::install_github("mdtrinh/paths")
 Given a binary treatment *A*, an outcome of interest *Y*, a set of pretreatment confounders *X*, and *K* causally ordered (possibly vector-valued) mediators *M~1~*, *M~2~*,...*M~K~*, the average total effect of the treatment on the outcome can be decomposed into *K+1* PSEs that represent the causal paths *A* `r to` *M~1~* `r leadsto` *Y*, *A* `r to` *M~2~* `r leadsto` *Y*,... *A* `r to` *M~K~* `r to` *Y*, and *A* `r to` *Y*, where the straight arrow `r to` denotes a direct path and the squiggly arrow `r leadsto` represents a combination of all direct and indirect paths. These effects are nonparametrically identified under standard ignorability assumptions ([Avin, Shpitser and Pearl 2005](https://escholarship.org/content/qt45x689gq/qt45x689gq.pdf)).
 
 The `paths` function estimates these PSEs using an imputation approach, which requires the user to provide *K+1* outcome models that characterize E[*Y* | *X*, *A*], E[*Y* | *X*, *A*, *M~1~*], ...E[*Y* | *X*, *A*, *M~K~*], respectively. These outcome models can be objects returned by `lm`, `glm`, `gbm::gbm`, `BART::pbart`, or `BART::wbart`. Below is an example illustrating the use of `paths` to estimate the direct and indirect effects of ancestor victimization on descendants' political attitudes. The original data come from [Lupu and Peisakhin (2017)](https://doi.org/10.1111/ajps.12327). 
+
+```{r include = FALSE}
+set.seed(02138)
+```
 
 ```{r cache = TRUE}
 library(paths)
@@ -88,7 +91,7 @@ The same PSEs can be alternatively estimated using an imputation-based weighting
 
 ```{r cache = TRUE}
 # propensity score model via gbm
-formula_ps <- formula_ps <- violence ~ kulak + prosoviet_pre +
+formula_ps <- violence ~ kulak + prosoviet_pre +
   religiosity_pre + land_pre + orchard_pre + animals_pre +
   carriage_pre + otherprop_pre
 gbm_ps <- gbm(formula_ps, data = tatar, distribution = "bernoulli",

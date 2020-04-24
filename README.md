@@ -96,7 +96,7 @@ summary(tatar_paths)
 #> Outcome model: annex ~ kulak + prosoviet_pre + religiosity_pre + land_pre + 
 #>     orchard_pre + animals_pre + carriage_pre + otherprop_pre + 
 #>     violence
-#> <environment: 0x0000000013195478>
+#> <environment: 0x000000001fd2b5c8>
 #> 
 #> Mediator 1 :  trust_g1 + victim_g1 + fear_g1 
 #> Mediator 2 :  trust_g2 + victim_g2 + fear_g2 
@@ -107,15 +107,15 @@ summary(tatar_paths)
 #> Pure Imputation Estimator: 
 #> Type 1 Decomposition: 
 #>                               Estimate Std. Err. 95% CI Lower 95% CI Upper
-#> Direct Effect: A -> Y           -0.004     0.040       -0.093        0.065
-#> Indirect Effect: A -> M3 -> Y   -0.023     0.024       -0.068        0.025
-#> Indirect Effect: A -> M2 ~> Y   -0.050     0.027       -0.083        0.021
-#> Indirect Effect: A -> M1 ~> Y   -0.092     0.026       -0.160       -0.060
+#> Direct Effect: A -> Y            0.007     0.038       -0.089        0.054
+#> Indirect Effect: A -> M3 -> Y   -0.037     0.024       -0.068        0.020
+#> Indirect Effect: A -> M2 ~> Y   -0.025     0.024       -0.073        0.022
+#> Indirect Effect: A -> M1 ~> Y   -0.114     0.025       -0.163       -0.068
 #> Total Effect: A ~> Y            -0.169     0.051       -0.277       -0.077
 #>                               P-value    
-#> Direct Effect: A -> Y           0.904    
-#> Indirect Effect: A -> M3 -> Y   0.472    
-#> Indirect Effect: A -> M2 ~> Y   0.224    
+#> Direct Effect: A -> Y           0.960    
+#> Indirect Effect: A -> M3 -> Y   0.384    
+#> Indirect Effect: A -> M2 ~> Y   0.328    
 #> Indirect Effect: A -> M1 ~> Y  <2e-16 ***
 #> Total Effect: A ~> Y           <2e-16 ***
 #> ---
@@ -123,16 +123,16 @@ summary(tatar_paths)
 #> 
 #> Type 2 Decomposition: 
 #>                               Estimate Std. Err. 95% CI Lower 95% CI Upper
-#> Direct Effect: A -> Y           -0.029     0.036       -0.122        0.012
-#> Indirect Effect: A -> M3 -> Y   -0.045     0.023       -0.062        0.027
-#> Indirect Effect: A -> M2 ~> Y   -0.014     0.025       -0.075        0.020
-#> Indirect Effect: A -> M1 ~> Y   -0.081     0.030       -0.144       -0.026
+#> Direct Effect: A -> Y           -0.030     0.035       -0.119        0.014
+#> Indirect Effect: A -> M3 -> Y   -0.029     0.023       -0.070        0.018
+#> Indirect Effect: A -> M2 ~> Y   -0.018     0.024       -0.065        0.026
+#> Indirect Effect: A -> M1 ~> Y   -0.093     0.030       -0.152       -0.034
 #> Total Effect: A ~> Y            -0.169     0.051       -0.277       -0.077
 #>                               P-value    
-#> Direct Effect: A -> Y           0.104    
-#> Indirect Effect: A -> M3 -> Y   0.424    
-#> Indirect Effect: A -> M2 ~> Y   0.392    
-#> Indirect Effect: A -> M1 ~> Y   0.008 ** 
+#> Direct Effect: A -> Y            0.20    
+#> Indirect Effect: A -> M3 -> Y    0.36    
+#> Indirect Effect: A -> M2 ~> Y    0.52    
+#> Indirect Effect: A -> M1 ~> Y  <2e-16 ***
 #> Total Effect: A ~> Y           <2e-16 ***
 #> ---
 #> Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
@@ -154,7 +154,7 @@ which can be objects returned by `glm`, `gbm::gbm`. `twang::ps`, or
 
 ``` r
 # propensity score model via gbm
-formula_ps <- formula_ps <- violence ~ kulak + prosoviet_pre +
+formula_ps <- violence ~ kulak + prosoviet_pre +
   religiosity_pre + land_pre + orchard_pre + animals_pre +
   carriage_pre + otherprop_pre
 gbm_ps <- gbm(formula_ps, data = tatar, distribution = "bernoulli",
@@ -168,15 +168,14 @@ tatar_paths2 <- paths(a = "violence", y = "annex", m = mediators,
 ## Plotting PSEs
 
 The `plot.paths` method can be used to visualize the total and
-path-specific causal effects estimated by
-`paths`.
+path-specific causal effects estimated by `paths`.
 
 ``` r
 plot(tatar_paths2, mediator_names = c("G1 identity", "G2 identity", "G3 identity"),
      estimator = "both")
 ```
 
-<img src="man/figures/README-unnamed-chunk-4-1.png" width="80%" height="60%" style="display: block; margin: auto;" />
+<img src="man/figures/README-unnamed-chunk-5-1.png" width="80%" height="60%" style="display: block; margin: auto;" />
 
 ## Sensitivity Analysis
 
@@ -208,7 +207,7 @@ sens_paths <- sens(tatar_paths, confounded = "M1", estimand = "via M1",
 plot(sens_paths)
 ```
 
-<img src="man/figures/README-unnamed-chunk-5-1.png" width="80%" height="60%" style="display: block; margin: auto;" />
+<img src="man/figures/README-unnamed-chunk-6-1.png" width="80%" height="60%" style="display: block; margin: auto;" />
 
 ## Experimental Data
 
