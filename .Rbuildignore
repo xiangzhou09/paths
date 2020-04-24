@@ -5,3 +5,4 @@
 ^internal$
 ^tests$
 ^vignettes$
+^README\.Rmd$

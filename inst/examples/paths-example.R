@@ -44,9 +44,9 @@ gbm_m2 <- gbm(formula_m2, data = tatar, distribution = "bernoulli", interaction.
 gbm_m3 <- gbm(formula_m3, data = tatar, distribution = "bernoulli", interaction.depth = 3)
 gbm_ymodels <- list(gbm_m0, gbm_m1, gbm_m2, gbm_m3)
 
-# propensity score model via twang::ps
+# propensity score model via gbm
 gbm_ps <- gbm(formula_ps, data = tatar, distribution = "bernoulli", interaction.depth = 3)
 
-# causal paths analysis using glm
+# causal paths analysis using gbm
 paths_gbm <- paths(a = "violence", y = "annex", m = mediators,
   gbm_ymodels, ps_model = gbm_ps, data = tatar, nboot = 10)
