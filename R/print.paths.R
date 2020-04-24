@@ -113,6 +113,7 @@ summary.paths <- function(object, ...){
     rownames(estimates_pure_t2) <-
     rownames(estimates_hybrid_t1) <-
     rownames(estimates_hybrid_t2) <-
+
     c("Direct Effect: A -> Y",
       paste0("Indirect Effect: A -> ", "M", K, " -> Y"),
       paste0("Indirect Effect: A -> ", "M", (K-1):1, " ~> Y"),
@@ -227,7 +228,6 @@ print.summary.paths <- function(x, ...) {
                  dig.tst = 3,
                  has.Pvalue = TRUE,
                  ...)
-
     cat("\n")
     cat("Type 2 Decomposition: \n")
     printCoefmat(x$estimates$hybrid_t2,
@@ -239,7 +239,6 @@ print.summary.paths <- function(x, ...) {
                  ...)
     cat("\n\n")
   }
-
   cat("Sample size:", x$nobs,"\n\n")
   cat("Number of bootstrap simulations:", x$nboot,"\n\n")
 
