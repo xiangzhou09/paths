@@ -7,3 +7,4 @@
 ^vignettes$
 ^README.Rmd$
 ^README_cache$
+^cran-comments.md$
