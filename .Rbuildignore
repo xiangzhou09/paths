@@ -5,4 +5,5 @@
 ^internal$
 ^tests$
 ^vignettes$
-^README\.Rmd$
+^README.Rmd$
+^README_cache$
