@@ -5,8 +5,17 @@
 \alias{print.paths}
 \title{Causal Paths Analysis}
 \usage{
-paths(a, y, m, models, ps_model = NULL, data, nboot = 500,
-  conf_level = 0.95, ...)
+paths(
+  a,
+  y,
+  m,
+  models,
+  ps_model = NULL,
+  data,
+  nboot = 500,
+  conf_level = 0.95,
+  ...
+)
 
 \method{print}{paths}(x, digits = 3, ...)
 }

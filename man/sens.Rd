@@ -4,9 +4,15 @@
 \alias{sens}
 \title{Sensitivity Analysis for Unobserved Confounding on Path-Specific Causal Effects}
 \usage{
-sens(object, confounded = "M1", estimand = "via M1",
-  estimator = c("pure", "hybrid"), decomp = c("Type I", "Type II"),
-  gamma_values = NULL, eta_values = NULL)
+sens(
+  object,
+  confounded = "M1",
+  estimand = "via M1",
+  estimator = c("pure", "hybrid"),
+  decomp = c("Type I", "Type II"),
+  gamma_values = NULL,
+  eta_values = NULL
+)
 }
 \arguments{
 \item{object}{a fitted model object returned by the \code{\link{paths}} function.}
