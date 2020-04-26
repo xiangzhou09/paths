@@ -93,3 +93,6 @@ plot(sens_glm)
 \references{
 Zhou, Xiang and Teppei Yamamoto. 2020. "\href{https://osf.io/2rx6p}{Tracing Causal Paths from Experimental and Observational Data}".
 }
+\seealso{
+\code{\link{paths}}, \code{\link{plot.sens}}
+}

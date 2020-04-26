@@ -86,3 +86,6 @@ summary(paths_glm)
 
 
 }
+\seealso{
+\code{\link{paths}}, \code{\link{print.paths}}, \code{\link{plot.paths}}
+}

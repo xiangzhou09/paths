@@ -85,6 +85,8 @@ print.paths <- function(x, digits = 3, ...) {
 #'
 #' @example inst/examples/summary.paths-example.R
 #'
+#' @seealso \code{\link{paths}}, \code{\link{print.paths}}, \code{\link{plot.paths}}
+#'
 #' @aliases print.summary.paths
 #' @export
 summary.paths <- function(object, ...){

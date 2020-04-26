@@ -144,3 +144,6 @@ paths_gbm <- paths(a = "violence", y = "annex", m = mediators,
 \references{
 Zhou, Xiang and Teppei Yamamoto. 2020. "\href{https://osf.io/2rx6p}{Tracing Causal Paths from Experimental and Observational Data}".
 }
+\seealso{
+\code{\link{summary.paths}}, \code{\link{plot.paths}}, \code{\link{sens}}
+}
