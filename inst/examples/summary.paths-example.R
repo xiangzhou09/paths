@@ -30,10 +30,13 @@ glm_ymodels <- list(glm_m0, glm_m1, glm_m2, glm_m3)
 glm_ps <- glm(formula_ps, family = binomial("logit"), data = tatar)
 
 # causal paths analysis using glm
+\dontrun{
 paths_glm <- paths(a = "violence", y = "annex", m = mediators,
   glm_ymodels, ps_model = glm_ps, data = tatar, nboot = 50)
-
+}
 # plot total, direct, and path-specific effects
+\dontrun{
 summary(paths_glm)
+}
 
 
