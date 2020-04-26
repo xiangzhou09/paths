@@ -48,7 +48,8 @@
 #' @param data a data frame containing all variables.
 #'
 #' @param ... additional arguments to be passed to \code{boot::boot}, e.g.
-#'   \code{parallel} and \code{ncpus}.
+#'   \code{parallel} and \code{ncpus}. For the \code{print} method, additional arguments to be passed to
+#'   \code{print.default}
 #'
 #' @return An object of class \code{paths}, which is a list containing the
 #'   following elements \describe{
@@ -83,6 +84,8 @@
 #' @references Zhou, Xiang and Teppei Yamamoto. 2020. "\href{https://osf.io/2rx6p}{Tracing Causal Paths from Experimental and Observational Data}".
 #'
 #' @example inst/examples/paths-example.R
+#'
+#' @seealso \code{\link{summary.paths}}, \code{\link{plot.paths}}, \code{\link{sens}}
 #'
 paths <- function(a, y, m, models, ps_model = NULL, data, nboot = 500, conf_level = 0.95, ...){
 

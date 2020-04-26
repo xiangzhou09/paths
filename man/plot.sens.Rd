@@ -4,13 +4,8 @@
 \alias{plot.sens}
 \title{Plot Method for \code{sens} Objects}
 \usage{
-\method{plot}{sens}(
-  x,
-  outcome_name = "Outcome",
-  x_axis = c("eta_k", "gamma_k"),
-  other = list(`eta_k-1` = NULL, `gamma_k-1` = NULL),
-  ...
-)
+\method{plot}{sens}(x, outcome_name = "Outcome", x_axis = c("eta_k",
+  "gamma_k"), other = list(`eta_k-1` = NULL, `gamma_k-1` = NULL), ...)
 }
 \arguments{
 \item{x}{an object of class \code{sens} returned by the \code{\link{sens}}

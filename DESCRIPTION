@@ -1,7 +1,7 @@
 Package: paths
 Type: Package
 Title: An Imputation Approach to Estimating Path-specific Causal Effects
-Version: 0.1.0
+Version: 1.0.0
 Date: 2020-04-14
 Authors@R: c(
     person("Minh", "Trinh", email = "mdtrinh@mit.edu", role = "cre"),

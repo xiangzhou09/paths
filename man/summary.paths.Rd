@@ -13,7 +13,8 @@
 \item{object}{an object of class \code{paths} returned by the
 \code{\link{paths}} function.}
 
-\item{...}{additional arguments passed to \code{printCoefmat}}
+\item{...}{additional arguments to be passed to \code{printCoefmat} for the
+\code{print} method}
 
 \item{x}{an object of class \code{summary.paths}}
 }

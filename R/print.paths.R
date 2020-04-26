@@ -1,9 +1,9 @@
 #####################################################
 # Print method for paths objects
 #####################################################
+#'
 #' @param x a fitted model object returned by the \code{\link{paths}} function.
 #' @param digits minimal number of significant digits printed.
-#' @param ... additional arguments passed to \code{print.default}
 #' @rdname paths
 #' @export
 print.paths <- function(x, digits = 3, ...) {
@@ -58,7 +58,8 @@ print.paths <- function(x, digits = 3, ...) {
 #'
 #' @param object an object of class \code{paths} returned by the
 #'   \code{\link{paths}} function.
-#' @param ... additional arguments.
+#' @param ... additional arguments to be passed to \code{printCoefmat} for the
+#' \code{print} method
 #'
 #' @return An object of class \code{summary.paths}, which is a list containing
 #'   the \code{call}, \code{varnames}, \code{formulas}, \code{classes},
@@ -158,7 +159,6 @@ summary.paths <- function(object, ...){
 }
 
 #' @param x an object of class \code{summary.paths}
-#' @param ... additional arguments passed to \code{printCoefmat}
 #' @rdname summary.paths
 #' @export
 print.summary.paths <- function(x, ...) {

@@ -4,14 +4,9 @@
 \alias{plot.paths}
 \title{Plot Method for \code{paths} Objects}
 \usage{
-\method{plot}{paths}(
-  x,
-  mediator_names = NULL,
-  estimator = c("pure", "hybrid", "both"),
-  decomp = c("Type I", "Type II", "both"),
-  horizontal = (decomp != "both"),
-  ...
-)
+\method{plot}{paths}(x, mediator_names = NULL, estimator = c("pure",
+  "hybrid", "both"), decomp = c("Type I", "Type II", "both"),
+  horizontal = (decomp != "both"), ...)
 }
 \arguments{
 \item{x}{an object of class \code{paths} returned by the \code{\link{paths}}
