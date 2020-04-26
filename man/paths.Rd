@@ -88,6 +88,8 @@ When \eqn{K=1}, the path-specific causal effects are identical to the natural di
 effects in standard causal mediation analysis.
 }
 \examples{
+# **For illustration purposes a small number of bootstrap replicates are used**
+
 data(tatar)
 
 m1 <- c("trust_g1", "victim_g1", "fear_g1")

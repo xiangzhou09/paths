@@ -48,6 +48,8 @@ indirect effect, separately for Type I and Type II decompositions.
   correctly specified.
 }
 \examples{
+# **For illustration purposes a small number of bootstrap replicates are used**
+
 data(tatar)
 
 m1 <- c("trust_g1", "victim_g1", "fear_g1")

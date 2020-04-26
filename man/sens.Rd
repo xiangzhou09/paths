@@ -51,6 +51,8 @@ confounding is being investigated, type of estimator, type of decomposition, and
 the \eqn{\gamma} and \eqn{\eta} parameters.
 }
 \examples{
+# **For illustration purposes a small number of bootstrap replicates are used**
+
 data(tatar)
 
 m1 <- c("trust_g1", "victim_g1", "fear_g1")
@@ -82,7 +84,7 @@ glm_ps <- glm(formula_ps, family = binomial("logit"), data = tatar)
 
 # causal paths analysis using glm
 paths_glm <- paths(a = "violence", y = "annex", m = mediators,
-  glm_ymodels, ps_model = glm_ps, data = tatar, nboot = 50)
+  glm_ymodels, ps_model = glm_ps, data = tatar, nboot = 20)
 
 # sensitivity analysis for the path-specific effect via M1
 sens_glm <- sens(paths_glm, confounded = "M1", estimand = "via M1",
