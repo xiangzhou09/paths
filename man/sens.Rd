@@ -91,7 +91,6 @@ glm_ps <- glm(formula_ps, family = binomial("logit"), data = tatar)
 paths_glm <- paths(a = "violence", y = "annex", m = mediators,
   glm_ymodels, ps_model = glm_ps, data = tatar, nboot = 3)
 
-
 # sensitivity analysis for the path-specific effect via M1
 sens_glm <- sens(paths_glm, confounded = "M1", estimand = "via M1",
   gamma_values = - seq(0, 0.5, 0.002), eta_values = seq(-0.5, 0.5, 0.002))
