@@ -5,12 +5,13 @@
 
 * local Windows 10 install, R 3.6.0, 4.0.0 and 4.1.0 (development version)
 * local ubuntu 18.04 install, R 3.6.2
-* R-hub builder
+* R-hub builder (ubuntu-gcc-devel, ubuntu-gcc-release, fedora-clang-devel, macos-highsierra-release-cran, windows-x86_64-release)
 * win-builder (oldrelease, release, devel)
 
 ## Re-submission changes
 
 ### Comment 01:
+
 ```
 Please add more details about the package functionality and implemented
 methods in your Description text.
@@ -20,6 +21,7 @@ Additional details about the package functionality and methods have been
 added to Description.
 
 ### Comment 02:
+
 ```
 \dontrun{} should only be used if the example really cannot be executed
 (e.g. because of missing additional software, missing API keys, ...) by
