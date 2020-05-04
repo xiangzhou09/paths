@@ -28,13 +28,12 @@ glm_ymodels <- list(glm_m0, glm_m1, glm_m2, glm_m3)
 glm_ps <- glm(formula_ps, family = binomial("logit"), data = tatar)
 
 # causal paths analysis using glm
-\dontrun{
+# note: For illustration purposes only a small number of bootstrap replicates are used
 paths_glm <- paths(a = "violence", y = "annex", m = mediators,
-  glm_ymodels, ps_model = glm_ps, data = tatar, nboot = 50)
-}
+  glm_ymodels, ps_model = glm_ps, data = tatar, nboot = 3)
+
 
 # plot total, direct, and path-specific effects
-\dontrun{
 plot(paths_glm, mediator_names = c("G1 identity", "G2 identity", "G3 identity"),
      estimator = "both")
-}
+

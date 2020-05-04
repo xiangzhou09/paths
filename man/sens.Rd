@@ -87,19 +87,17 @@ glm_ymodels <- list(glm_m0, glm_m1, glm_m2, glm_m3)
 glm_ps <- glm(formula_ps, family = binomial("logit"), data = tatar)
 
 # causal paths analysis using glm
-\dontrun{
+# note: For illustration purposes only a small number of bootstrap replicates are used
 paths_glm <- paths(a = "violence", y = "annex", m = mediators,
-  glm_ymodels, ps_model = glm_ps, data = tatar, nboot = 50)
-}
+  glm_ymodels, ps_model = glm_ps, data = tatar, nboot = 3)
+
 
 # sensitivity analysis for the path-specific effect via M1
-\dontrun{
 sens_glm <- sens(paths_glm, confounded = "M1", estimand = "via M1",
   gamma_values = - seq(0, 0.5, 0.002), eta_values = seq(-0.5, 0.5, 0.002))
-}
-\dontrun{
+
 plot(sens_glm)
-}
+
 }
 \references{
 Zhou, Xiang and Teppei Yamamoto. 2020. "\href{https://osf.io/2rx6p}{Tracing Causal Paths from Experimental and Observational Data}".

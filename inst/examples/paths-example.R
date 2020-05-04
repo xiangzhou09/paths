@@ -28,10 +28,10 @@ glm_ymodels <- list(glm_m0, glm_m1, glm_m2, glm_m3)
 glm_ps <- glm(formula_ps, family = binomial("logit"), data = tatar)
 
 # causal paths analysis using glm
-\dontrun{
+# note: For illustration purposes only a small number of bootstrap replicates are used
 paths_glm <- paths(a = "violence", y = "annex", m = mediators,
-  glm_ymodels, ps_model = glm_ps, data = tatar, nboot = 50)
-}
+  glm_ymodels, ps_model = glm_ps, data = tatar, nboot = 3)
+
 
 ####################################################
 # Causal Paths Analysis using GBM
@@ -50,7 +50,7 @@ gbm_ymodels <- list(gbm_m0, gbm_m1, gbm_m2, gbm_m3)
 gbm_ps <- gbm(formula_ps, data = tatar, distribution = "bernoulli", interaction.depth = 3)
 
 # causal paths analysis using gbm
-\dontrun{
+# note: For illustration purposes only a small number of bootstrap replicates are used
 paths_gbm <- paths(a = "violence", y = "annex", m = mediators,
-  gbm_ymodels, ps_model = gbm_ps, data = tatar, nboot = 50)
-}
+  gbm_ymodels, ps_model = gbm_ps, data = tatar, nboot = 3)
+
