@@ -11,6 +11,7 @@
 ## Re-submission changes
 
 ### Comment 01:
+
 ```
 Please add more details about the package functionality and implemented
 methods in your Description text.
@@ -20,6 +21,7 @@ Additional details about the package functionality and methods have been
 added to Description.
 
 ### Comment 02:
+
 ```
 \dontrun{} should only be used if the example really cannot be executed
 (e.g. because of missing additional software, missing API keys, ...) by
