@@ -118,8 +118,7 @@ summary.paths <- function(object, ...){
     rownames(estimates_hybrid_t2) <-
 
     c("Direct Effect: A -> Y",
-      paste0("Indirect Effect: A -> ", "M", K, " -> Y"),
-      paste0("Indirect Effect: A -> ", "M", (K-1):1, " ~> Y"),
+      paste0("Indirect Effect: A -> ", "M", K:1, " ~> Y"),
       "Total Effect: A ~> Y")
 
   colnames(estimates_pure_t1) <-

@@ -4,8 +4,7 @@
 \name{welfare}
 \alias{welfare}
 \title{Issue Framing and Support for Welfare Reform}
-\format{
-A data frame with 213 rows and 15 columns: \describe{
+\format{A data frame with 213 rows and 15 columns: \describe{
   \item{gender1}{Gender. 0: Female; 1: Male.}
   \item{educ1}{Level of education.
     1: the municipal primary and lower secondary school before ninth form;
@@ -39,8 +38,7 @@ A data frame with 213 rows and 15 columns: \describe{
   \item{M5}{How important the respondent thinks that the unemployed should have benefit rates
     making it possible to maintain a decent standard of living conditions, measured on a 0-1 scale.}
   \item{Y}{Support for the proposed welfare reform, measured on a seven-point scale.}
-  }
-}
+  }}
 \usage{
 welfare
 }
