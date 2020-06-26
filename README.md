@@ -22,6 +22,8 @@ And the development version from [GitHub](https://github.com/) with:
 ``` r
 # install.packages("devtools")
 devtools::install_github("mdtrinh/paths")
+# or
+devtools::install_github("xiangzhou09/paths")
 ```
 
 ## Estimating Path-specific Effects (PSEs)
@@ -167,7 +169,8 @@ tatar_paths2 <- paths(a = "violence", y = "annex", m = mediators,
 ## Plotting PSEs
 
 The `plot.paths` method can be used to visualize the total and
-path-specific causal effects estimated by `paths`.
+path-specific causal effects estimated by
+`paths`.
 
 ``` r
 plot(tatar_paths2, mediator_names = c("G1 identity", "G2 identity", "G3 identity"),
