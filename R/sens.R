@@ -66,7 +66,7 @@ sens <- function(object,
     stop("'estimand' must be provided.")
 
   # match arguments
-  K <- length(object$varnames) - 3
+  K <- length(object$varnames$m)
   confounded <- match.arg(confounded, paste0("M", 1:K))
   estimand <- match.arg(estimand, c(paste0("via M", 1:K), "direct"))
   estimator <- match.arg(estimator, c("pure", "hybrid"))

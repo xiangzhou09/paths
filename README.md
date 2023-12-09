@@ -169,8 +169,7 @@ tatar_paths2 <- paths(a = "violence", y = "annex", m = mediators,
 ## Plotting PSEs
 
 The `plot.paths` method can be used to visualize the total and
-path-specific causal effects estimated by
-`paths`.
+path-specific causal effects estimated by `paths`.
 
 ``` r
 plot(tatar_paths2, mediator_names = c("G1 identity", "G2 identity", "G3 identity"),
@@ -203,8 +202,7 @@ and η.
 
 ``` r
 # sensitivity analysis for the path-specific effect via M1
-sens_paths <- sens(tatar_paths, confounded = "M1", estimand = "via M1",
-  gamma_values = - seq(0, 0.5, 0.002), eta_values = seq(-0.5, 0.5, 0.002))
+sens_paths <- sens(tatar_paths, confounded = "M1", estimand = "via M1", gamma_values = - seq(0, 0.5, 0.002), eta_values = seq(-0.5, 0.5, 0.002))
 
 plot(sens_paths)
 ```

@@ -4,7 +4,8 @@
 \name{tatar}
 \alias{tatar}
 \title{The Legacy of Political Violence among Crimean Tatars}
-\format{A data frame with 427 rows and 19 columns: \describe{
+\format{
+A data frame with 427 rows and 19 columns: \describe{
   \item{kulak}{Whether the first-generation respondent had close relatives subject to
    dekulakization. 0: no; 1: yes.}
   \item{prosoviet_pre}{Whether the first-generation respondent's close relatives privately
@@ -43,7 +44,8 @@
   \item{fear_g3}{Whether the third-generation respondent started to fear concerning their future
   after the March referendum. 0: no; 1: yes.}
   \item{annex}{Whether the third-generation respondent supports Russia’s annexation of Crimea. 0: no; 1: yes.}
-  }}
+  }
+}
 \usage{
 tatar
 }

@@ -123,8 +123,7 @@ by showing contours of bias-adjusted estimates under different values of γ and 
 
 ```{r, out.width="80%", out.height="60%", fig.align = "center"}
 # sensitivity analysis for the path-specific effect via M1
-sens_paths <- sens(tatar_paths, confounded = "M1", estimand = "via M1",
-  gamma_values = - seq(0, 0.5, 0.002), eta_values = seq(-0.5, 0.5, 0.002))
+sens_paths <- sens(tatar_paths, confounded = "M1", estimand = "via M1", gamma_values = - seq(0, 0.5, 0.002), eta_values = seq(-0.5, 0.5, 0.002))
 
 plot(sens_paths)
 ```
